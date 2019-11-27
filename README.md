@@ -1,7 +1,7 @@
 # interpro-curation-tools
 Scripts to help InterPro curation
 
-##Requirements
+## Requirements
 Python 3.4 and above
 
 ## Search proteome
