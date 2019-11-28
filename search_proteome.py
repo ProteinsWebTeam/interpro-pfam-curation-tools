@@ -35,7 +35,8 @@ class protein_pipeline:
         self.clusters = dict()
 
     def getConnection(self):
-        connectString = "".join([self.user, "/", self.password, "@", self.schema])
+        connectString = "".join(
+            [self.user, "/", self.password, "@", self.schema])
         try:
             return cx_Oracle.connect(connectString)
         except:
@@ -69,7 +70,7 @@ class protein_pipeline:
         """
         for i in range(0, len(l), n):
             # Create an index range for l of n items:
-            yield l[i : i + n]
+            yield l[i: i + n]
 
     def search_taxid(self, organism):
         """
@@ -147,23 +148,27 @@ class protein_pipeline:
 
         Args:
             list_signatures: list of InterPro signatures
-        
+
         Yields:
-            dictionnary with signature as key and protein_count as value
+            count_prot_signatures: dictionnary with signature as key and protein_count as value
 
         """
+        count_prot_signatures = dict()
 
         signature_chunks = list(self.chunks(list(list_signatures), 1000))
         for chunk in signature_chunks:
             signature_list_quote = [f"'{row}'" for row in chunk]
-        request = f"select m2p.method_ac,count(p.protein_ac) \
+            request = f"select m2p.method_ac,count(p.protein_ac) \
                 from INTERPRO.PROTEIN p \
                 join INTERPRO.MV_METHOD2PROTEIN m2p on p.PROTEIN_AC = m2p.PROTEIN_AC \
                 join INTERPRO.ETAXI et on p.tax_id = et.tax_id \
                 where et.tax_id=:1 and m2p.METHOD_AC in ({','.join(signature_list_quote)}) \
                 group by m2p.method_ac"
-        self.cursor.execute(request, (self.tax_id,))
-        return {row[0]: row[1] for row in self.cursor}
+            self.cursor.execute(request, (self.tax_id,))
+            count_prot_signatures.update(
+                {row[0]: row[1] for row in self.cursor})
+
+        return count_prot_signatures
 
     def get_accession_in_signature(self, folder, protein_list):
         """
@@ -172,7 +177,7 @@ class protein_pipeline:
 
         Args:
             protein_list: list of proteins
-        
+
         Yields:
             list of proteins found in unintegrated signatures
 
@@ -228,7 +233,7 @@ class protein_pipeline:
             for protein, signatures in list_proteins_with_signature.items():
                 for signature, values in signatures.items():
                     outf.write(
-                        f"{protein},{values[0]},{values[1]},{signature},{values[2]},{count_prot_signatures[signature]},{values[3] if values[3]!='None' else ''}\n"
+                        f"{protein},{values[0]},{values[1]},{signature},{values[2]},{count_prot_signatures[signature]},{values[3] if values[3]!=None else ''}\n"
                     )
         return list_proteins_with_signature.keys()
 
@@ -342,7 +347,8 @@ if __name__ == "__main__":
 
     # search for proteins in unintegrated InterPro signatures
     list_in_signature = set(
-        protein_pip.get_accession_in_signature(args.folder, unintegrated_subset)
+        protein_pip.get_accession_in_signature(
+            args.folder, unintegrated_subset)
     )
     print(
         f"UniProt accession unintegrated matching signature: {len(list_in_signature)}"
