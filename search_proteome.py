@@ -14,7 +14,6 @@
 """
 
 import argparse
-import configparser
 import os
 import sys
 import traceback
@@ -104,10 +103,10 @@ class protein_pipeline:
 
         print(f"Searching for protein accessions for taxid {self.tax_id}")
 
-        request = "select unique p.protein_ac \
-            from INTERPRO.PROTEIN p \
-            join INTERPRO.ETAXI et on p.tax_id = et.tax_id \
-            where p.tax_id=:1"
+        request = "SELECT UNIQUE P.PROTEIN_AC \
+            FROM INTERPRO.PROTEIN P \
+            JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
+            WHERE P.TAX_ID=:1"
 
         self.cursor.execute(request, (self.tax_id,))
         protein_list = [row[0] for row in self.cursor]
@@ -133,10 +132,10 @@ class protein_pipeline:
         list_integrated = set()
         for chunk in uniprot_chunks:
             protein_list_quote = [f"'{row}'" for row in chunk]
-            request = f"select p.protein_ac \
-                    from INTERPRO.MV_ENTRY2PROTEIN e2p \
-                    join Interpro.protein p on e2p.PROTEIN_AC=p.PROTEIN_AC \
-                    where e2p.protein_ac in ({','.join(protein_list_quote)})"
+            request = f"SELECT P.PROTEIN_AC \
+                    FROM INTERPRO.MV_ENTRY2PROTEIN E2P \
+                    JOIN INTERPRO.PROTEIN P ON E2P.PROTEIN_AC=P.PROTEIN_AC \
+                    WHERE E2P.PROTEIN_AC IN ({','.join(protein_list_quote)})"
             self.cursor.execute(request)
 
             list_integrated.update(set([row[0] for row in self.cursor]))
@@ -158,12 +157,12 @@ class protein_pipeline:
         signature_chunks = list(self.chunks(list(list_signatures), 1000))
         for chunk in signature_chunks:
             signature_list_quote = [f"'{row}'" for row in chunk]
-            request = f"select m2p.method_ac,count(p.protein_ac) \
-                from INTERPRO.PROTEIN p \
-                join INTERPRO.MV_METHOD2PROTEIN m2p on p.PROTEIN_AC = m2p.PROTEIN_AC \
-                join INTERPRO.ETAXI et on p.tax_id = et.tax_id \
-                where et.tax_id=:1 and m2p.METHOD_AC in ({','.join(signature_list_quote)}) \
-                group by m2p.method_ac"
+            request = f"SELECT M2P.METHOD_AC,COUNT(P.PROTEIN_AC) \
+                FROM INTERPRO.PROTEIN P \
+                JOIN INTERPRO.MV_METHOD2PROTEIN M2P ON P.PROTEIN_AC = M2P.PROTEIN_AC \
+                JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
+                WHERE ET.TAX_ID=:1 AND M2P.METHOD_AC IN ({','.join(signature_list_quote)}) \
+                GROUP BY M2P.METHOD_AC"
             self.cursor.execute(request, (self.tax_id,))
             count_prot_signatures.update(
                 {row[0]: row[1] for row in self.cursor})
@@ -173,7 +172,7 @@ class protein_pipeline:
     def get_accession_in_signature(self, folder, protein_list):
         """
         Search for proteins found in InterPro signatures but not integrated
-        Write the results in a csv file with each row corresponding to a protein/signature pair (protein,dbcode,organism,signature,total_prot_count,count_taxa,comment)
+        Write the results in a csv file with each row corresponding to a protein/signature pair (protein,dbcode,organism,signature,total_prot_count,count_proteome,comment)
 
         Args:
             protein_list: list of proteins
@@ -190,14 +189,14 @@ class protein_pipeline:
 
         for chunk in uniprot_chunks:
             protein_list_quote = [f"'{row}'" for row in chunk]
-            request = f"select p.protein_ac, p.dbcode, et.scientific_name, m2p.METHOD_AC, mm.PROTEIN_COUNT, LISTAGG(mc.VALUE, '; ') WITHIN GROUP (ORDER by mc.value) COMMENTS \
-                    from INTERPRO.PROTEIN p \
-                    join INTERPRO.ETAXI et on p.tax_id = et.tax_id \
-                    join INTERPRO.MV_METHOD2PROTEIN m2p on p.PROTEIN_AC = m2p.PROTEIN_AC \
-                    join INTERPRO.MV_METHOD_MATCH mm on mm.method_ac = m2p.method_ac \
-                    left join INTERPRO.METHOD_COMMENT mc on mc.method_ac = m2p.method_ac \
-                    where p.protein_ac in ({','.join(protein_list_quote)}) \
-                    group by p.protein_ac, p.dbcode, et.scientific_name, m2p.METHOD_AC, mm.PROTEIN_COUNT"
+            request = f"SELECT P.PROTEIN_AC, P.DBCODE, ET.SCIENTIFIC_NAME, M2P.METHOD_AC, MM.PROTEIN_COUNT, LISTAGG(MC.VALUE, '; ') WITHIN GROUP (ORDER BY MC.VALUE) COMMENTS \
+                    FROM INTERPRO.PROTEIN P \
+                    JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
+                    JOIN INTERPRO.MV_METHOD2PROTEIN M2P ON P.PROTEIN_AC = M2P.PROTEIN_AC \
+                    JOIN INTERPRO.MV_METHOD_MATCH MM ON MM.METHOD_AC = M2P.METHOD_AC \
+                    LEFT JOIN INTERPRO.METHOD_COMMENT MC ON MC.METHOD_AC = M2P.METHOD_AC \
+                    WHERE P.PROTEIN_AC IN ({','.join(protein_list_quote)}) \
+                    GROUP BY P.PROTEIN_AC, P.DBCODE, ET.SCIENTIFIC_NAME, M2P.METHOD_AC, MM.PROTEIN_COUNT"
             self.cursor.execute(request)
 
             results = self.cursor.fetchall()
@@ -228,7 +227,7 @@ class protein_pipeline:
         )
         with open(unintegrated_file, "w") as outf:
             outf.write(
-                "protein,dbcode,organism,signature,total_prot_count,count_taxa,comment\n"
+                "protein,dbcode,organism,signature,total_prot_count,count_proteome,comment\n"
             )
             for protein, signatures in list_proteins_with_signature.items():
                 for signature, values in signatures.items():
@@ -380,6 +379,7 @@ if __name__ == "__main__":
         args.folder, f"all_clusters_taxid_{protein_pip.tax_id}.csv"
     )
     with open(uniref50_cluster_file, "w") as f:
-        f.write("cluster_id,size,accessions\n")
+        f.write("cluster_id,count proteome matches,accessions\n")
         for cluster, accessions in protein_pip.uniref50.items():
-            f.write(f"{cluster},{len(accessions)},{'; '.join(accessions)}\n")
+            f.write(
+                f"{cluster},{len(protein_pip.clusters[cluster])},{'; '.join(accessions)}\n")
