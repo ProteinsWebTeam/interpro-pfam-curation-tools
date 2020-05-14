@@ -2,7 +2,7 @@
 Scripts to help InterPro curation
 
 ## Requirements
-Python 3.4 and above
+Python 3.6 and above
 
 ## Search proteome
 Pipeline to search proteins for a given organism or taxid in InterPro signatures.
