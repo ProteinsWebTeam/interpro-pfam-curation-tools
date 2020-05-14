@@ -22,104 +22,21 @@ from pathlib import Path
 import cx_Oracle
 import requests
 
+from utils import proteome
 
-class protein_pipeline:
-    def __init__(self, user, password, schema):
-        self.user, self.password = user, password
-        self.schema = schema
-        self.connection = self.getConnection()
-        self.cursor = self.connection.cursor()
-        self.tax_id = None
+
+class protein_pipeline(proteome):
+    def __init__(self):
+        super().__init__(self)
         self.uniref50 = dict()
         self.clusters = dict()
-
-    def getConnection(self):
-        connectString = "".join(
-            [self.user, "/", self.password, "@", self.schema])
-        try:
-            return cx_Oracle.connect(connectString)
-        except:
-            stackTrace = traceback.format_exc()
-            print(stackTrace)
-            if "invalid username" in stackTrace:
-                print(
-                    "Could not connect to {0} as user {1}".format(
-                        self.schema, self.user
-                    )
-                )
-                print(
-                    "NB if your oracle username contains the '$' character either escape it or surround it with quotes"
-                )
-                print('eg "ops$craigm" or ops\$craigm')
-                print(
-                    "Otherwise the shell will remove the '$' and all subsequent characters!"
-                )
-            sys.exit(1)
-
-    def chunks(self, l, n):
-        """Yield chunks of size n from iterable.
-
-        Args:
-            l (Iterable): The iterable to chunk
-            n (int): Maximum number of items in chunk
-
-        Yields:
-            Iterable: Tuples of length n or less (final bucket will have only the remaining items)
-
-        """
-        for i in range(0, len(l), n):
-            # Create an index range for l of n items:
-            yield l[i: i + n]
-
-    def search_taxid(self, organism):
-        """
-        Search taxid for specified organism
-
-        Args:
-            configfile: Configuration file containing database connection credentials
-            organism: Organism to search the taxid for
-
-        Yields:
-            taxid: taxonomic identifier for the organism of interest
-
-        """
-
-        request = "Select tax_id from INTERPRO.ETAXI where scientific_name=:1"
-        self.cursor.execute(request, (organism,))
-        self.tax_id = self.cursor.fetchone()[0]
-
-        print(f"Found taxid {self.tax_id} for {organism}")
-
-    def get_proteins(self):
-        """
-        Search protein accessions for the taxid
-
-        Args: None
-
-        Yields: 
-            protein_list: list of proteins
-
-        """
-
-        print(f"Searching for protein accessions for taxid {self.tax_id}")
-
-        request = "SELECT UNIQUE P.PROTEIN_AC \
-            FROM INTERPRO.PROTEIN P \
-            JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
-            WHERE P.TAX_ID=:1"
-
-        self.cursor.execute(request, (self.tax_id,))
-        protein_list = [row[0] for row in self.cursor]
-        print(f"Found {len(protein_list)} accessions")
-
-        return protein_list
 
     def get_integrated(self, protein_list):
         """
         Search integrated proteins
 
         Args:
-            protein_list: list of proteins
+            protein_list: list containing proteins to search for
 
         Yields:
             list_integrated: list of proteins integrated in InterPro entries
@@ -164,8 +81,7 @@ class protein_pipeline:
                 WHERE ET.TAX_ID=:1 AND M2P.METHOD_AC IN ({','.join(signature_list_quote)}) \
                 GROUP BY M2P.METHOD_AC"
             self.cursor.execute(request, (self.tax_id,))
-            count_prot_signatures.update(
-                {row[0]: row[1] for row in self.cursor})
+            count_prot_signatures.update({row[0]: row[1] for row in self.cursor})
 
         return count_prot_signatures
 
@@ -175,7 +91,8 @@ class protein_pipeline:
         Write the results in a csv file with each row corresponding to a protein/signature pair (protein,dbcode,organism,signature,total_prot_count,count_proteome,comment)
 
         Args:
-            protein_list: list of proteins
+            folder: output directory
+            protein_list: list containing proteins to search for
 
         Yields:
             list of proteins found in unintegrated signatures
@@ -259,12 +176,10 @@ class protein_pipeline:
         Search clustering information in UniRef from UniProt for a given UniProt accession
 
         Args:
-            protein_list: list of UniProt accessions to cluster
+            None
 
         """
-        print(
-            "Clustering UniProt accessions unintegrated with no signature using Uniref50"
-        )
+        print("Clustering UniProt accessions unintegrated with no signature using Uniref50")
         for uniprotid in protein_list:
             uniref_cluster = self.search_uniprotid_in_uniref(uniprotid)
 
@@ -293,20 +208,12 @@ class protein_pipeline:
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-u", "--user", help="username for database connection", required=True
-    )
-    parser.add_argument(
-        "-p", "--password", help="password for database connection", required=True
-    )
-    parser.add_argument(
-        "-s", "--schema", help="database schema to connect to", required=True
-    )
+    parser.add_argument("-u", "--user", help="username for database connection", required=True)
+    parser.add_argument("-p", "--password", help="password for database connection", required=True)
+    parser.add_argument("-s", "--schema", help="database schema to connect to", required=True)
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
-        "-o",
-        "--organism",
-        help="Scientific name of the organism to get the conservation score for",
+        "-o", "--organism", help="Scientific name of the organism to get the conservation score for"
     )
     group.add_argument(
         "-t", "--taxid", help="Taxid of the organism to get the conservation score for"
@@ -317,8 +224,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # initialise the class
-    protein_pip = protein_pipeline(args.user, args.password, args.schema)
+    # initialising
+    protein_pip = protein_pipeline()
+    protein_pip.getConnection(args.user, args.password, args.schema)
 
     # create output directory if it doesn't exist
     Path(args.folder).mkdir(parents=True, exist_ok=True)
@@ -331,7 +239,7 @@ if __name__ == "__main__":
         protein_pip.tax_id = args.taxid
     else:
         print("Error no organism or taxid provided")
-        exit()
+        sys.exit(1)
 
     # search the proteome
     protein_list = protein_pip.get_proteins()
@@ -346,18 +254,13 @@ if __name__ == "__main__":
 
     # search for proteins in unintegrated InterPro signatures
     list_in_signature = set(
-        protein_pip.get_accession_in_signature(
-            args.folder, unintegrated_subset)
+        protein_pip.get_accession_in_signature(args.folder, unintegrated_subset)
     )
-    print(
-        f"UniProt accession unintegrated matching signature: {len(list_in_signature)}"
-    )
+    print(f"UniProt accession unintegrated matching signature: {len(list_in_signature)}")
 
     # list of unintegrated proteins not found in InterPro signatures
     list_not_in_signature = unintegrated_subset.difference(list_in_signature)
-    print(
-        f"UniProt accession unintegrated with no signature: {len(list_not_in_signature)}"
-    )
+    print(f"UniProt accession unintegrated with no signature: {len(list_not_in_signature)}")
 
     # close database connection
     protein_pip.connection.close()
@@ -367,9 +270,7 @@ if __name__ == "__main__":
     print(f"{len(protein_pip.clusters)} clusters found")
 
     # write clustering results in file
-    cluster_file = os.path.join(
-        args.folder, f"clusters_proteome_taxid_{protein_pip.tax_id}.csv"
-    )
+    cluster_file = os.path.join(args.folder, f"clusters_proteome_taxid_{protein_pip.tax_id}.csv")
     with open(cluster_file, "w") as f:
         f.write("cluster_id,accessions\n")
         for cluster, accessions in protein_pip.clusters.items():
@@ -381,5 +282,5 @@ if __name__ == "__main__":
     with open(uniref50_cluster_file, "w") as f:
         f.write("cluster_id,count proteome matches,accessions\n")
         for cluster, accessions in protein_pip.uniref50.items():
-            f.write(
-                f"{cluster},{len(protein_pip.clusters[cluster])},{'; '.join(accessions)}\n")
+            f.write(f"{cluster},{len(protein_pip.clusters[cluster])},{'; '.join(accessions)}\n")
+
