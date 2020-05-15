@@ -22,18 +22,10 @@ from count_integrated_proteome import statistics
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-u", "--user", help="username for database connection", required=True
-    )
-    parser.add_argument(
-        "-p", "--password", help="password for database connection", required=True
-    )
-    parser.add_argument(
-        "-s", "--schema", help="database schema to connect to", required=True
-    )
-    parser.add_argument(
-        "-b", "--begin_date", help="start date for the search ", required=True
-    )
+    parser.add_argument("-u", "--user", help="username for database connection", required=True)
+    parser.add_argument("-p", "--password", help="password for database connection", required=True)
+    parser.add_argument("-s", "--schema", help="database schema to connect to", required=True)
+    parser.add_argument("-b", "--begin_date", help="start date for the search ", required=True)
     parser.add_argument("-e", "--end_date", help="end date for the search ")
     args = parser.parse_args()
 
@@ -66,9 +58,7 @@ if __name__ == "__main__":
             stats.tax_id = taxid
             count_integrated[taxid] = len(stats.count(args.begin_date, end_date))
 
-        print(
-            f"Newly created InterPro entries between ${args.begin_date}, ${end_date}:"
-        )
+        print(f"Newly created InterPro entries between ${args.begin_date}, ${end_date}:")
         for taxid in count_integrated:
             print(f"{list_taxid[taxid]}\t{count_integrated[taxid]}")
 

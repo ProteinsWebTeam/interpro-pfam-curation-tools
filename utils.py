@@ -20,9 +20,9 @@ class proteome:
         self.tax_id = None
 
     def getConnection(self, user, password, schema):
-         """
-        Set database connection
         """
+		Set database connection
+		"""
 
         connectString = "".join([user, "/", password, "@", schema])
         try:
@@ -38,35 +38,35 @@ class proteome:
                 )
                 print('eg "ops$craigm" or ops\$craigm')
                 print("Otherwise the shell will remove the '$' and all subsequent characters!")
-            sys.exit(1)
+                sys.exit(1)
 
     def chunks(self, l, n):
         """Yield chunks of size n from iterable.
 
-        Args:
-            l (Iterable): The iterable to chunk
-            n (int): Maximum number of items in chunk
+		Args:
+			l (Iterable): The iterable to chunk
+			n (int): Maximum number of items in chunk
 
-        Yields:
-            Iterable: Tuples of length n or less (final bucket will have only the remaining items)
+		Yields:
+			Iterable: Tuples of length n or less (final bucket will have only the remaining items)
 
-        """
+		"""
         for i in range(0, len(l), n):
             # Create an index range for l of n items:
             yield l[i : i + n]
 
     def search_taxid(self, organism):
         """
-        Search taxid for specified organism
+		Search taxid for specified organism
 
-        Args:
-            configfile: Configuration file containing database connection credentials
-            organism: Organism to search the taxid for
+		Args:
+			configfile: Configuration file containing database connection credentials
+			organism: Organism to search the taxid for
 
-        Yields:
-            taxid: taxonomic identifier for the organism of interest
+		Yields:
+			taxid: taxonomic identifier for the organism of interest
 
-        """
+		"""
 
         request = "Select tax_id from INTERPRO.ETAXI where scientific_name=:1"
         self.cursor.execute(request, (organism,))
@@ -79,21 +79,21 @@ class proteome:
 
     def get_proteins(self):
         """
-        Search protein accessions for the taxid
+		Search protein accessions for the taxid
 
-        Args: None
+		Args: None
 
-        Yields: 
-            protein_list: list of proteins
+		Yields: 
+			protein_list: list of proteins
 
-        """
+		"""
 
         # print(f"Searching protein accessions for taxid {self.tax_id}")
 
         request = "SELECT UNIQUE P.PROTEIN_AC \
-            FROM INTERPRO.PROTEIN P \
-            JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
-            WHERE P.TAX_ID=:1"
+			FROM INTERPRO.PROTEIN P \
+			JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
+			WHERE P.TAX_ID=:1"
 
         self.cursor.execute(request, (self.tax_id,))
         protein_list = [row[0] for row in self.cursor]
@@ -101,9 +101,9 @@ class proteome:
         return protein_list
 
     def close_connection(self):
-         """
-        Close database connection
         """
-        
+		Close database connection
+		"""
+
         self.cursor.close()
         self.connection.close()
