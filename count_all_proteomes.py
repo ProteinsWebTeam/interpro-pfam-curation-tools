@@ -30,10 +30,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     list_taxid = {
-        161934: "Beta vulgaris",
+        161_934: "Beta vulgaris",
         9913: "Bos taurus",
         9031: "Gallus gallus",
-        183674: "Miscanthus X giganteus",
+        183_674: "Miscanthus X giganteus",
         8030: "Salmo salar",
         9823: "Sus scrofa",
         4565: "Triticum aestivum",
@@ -58,7 +58,7 @@ if __name__ == "__main__":
             stats.tax_id = taxid
             count_integrated[taxid] = len(stats.count(args.begin_date, end_date))
 
-        print(f"Newly created InterPro entries between ${args.begin_date}, ${end_date}:")
+        print(f"Newly created InterPro entries between {args.begin_date}, {end_date}:")
         for taxid in count_integrated:
             print(f"{list_taxid[taxid]}\t{count_integrated[taxid]}")
 
