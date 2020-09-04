@@ -11,6 +11,7 @@ import cx_Oracle
 import os
 import sys
 import traceback
+import subprocess
 
 
 class proteome:
@@ -18,6 +19,8 @@ class proteome:
         self.connection = None
         self.cursor = None
         self.tax_id = None
+        self.old_proteinlist = dict()
+        self.new_proteinlist = dict()
 
     def getConnection(self, user, password, schema):
         """
@@ -99,6 +102,31 @@ class proteome:
         protein_list = [row[0] for row in self.cursor]
         # print(f"Found {len(protein_list)} accessions")
         return protein_list
+
+    def get_protein2ipr_file(self, version, folder):
+        protein_file = os.path.join(folder, f"proteinlist_{version}")
+        compressed_file = os.path.join(folder, f"{version}_protein2ipr.dat.gz")
+        if not os.path.isfile(protein_file) or os.path.getsize(protein_file) == 0:
+            print(f"Getting protein file for InterPro {version}")
+            if not os.path.isfile(compressed_file) or os.path.getsize(compressed_file) == 0:
+                interpro_file = (
+                    f"ftp://ftp.ebi.ac.uk/pub/databases/interpro/{version}/protein2ipr.dat.gz"
+                )
+                wget = subprocess.Popen(["wget", "-O", compressed_file, interpro_file])  # ~5min
+                wget.communicate()
+
+            cmd = f"zcat {compressed_file} | cut -f1 | sort | uniq > {protein_file}"
+            zcat = subprocess.Popen([cmd], shell=True, stdout=subprocess.PIPE)  # ~ 1hour
+            zcat.communicate()
+
+        print(f"Getting list of integrated proteins for InterPro {version}")
+        with open(protein_file, "r") as f:
+            proteinlist = dict()
+            for line in f:
+                line = line.strip("\n")
+                proteinlist[line] = 0
+
+        return proteinlist
 
     def close_connection(self):
         """
