@@ -1,12 +1,15 @@
 """
 @author T. Paysan-Lafosse
 
-@brief This script counts newly created InterPro entries between 2 InterPro releases for a given reference proteome (InterPro BBR grant)
+@brief This script counts newly created InterPro entries between 2 InterPro releases for a given reference proteome, taxid or Scientific name (InterPro BBR grant)
 
-@arguments [-b OLD_RELEASE_VERSION]: InterPro version to start the comparison
+@arguments [-u USER]: database user (if -t or -o)
+           [-p PASSWORD]: database password for the user (if -t or -o)
+           [-s SCHEMA]: database schema to use (if -t or -o)
+           [-b OLD_RELEASE_VERSION]: InterPro version to start the comparison
            [-e NEW_RELEASE_VERSION]: InterPro version to stop the comparison
            [-d PROTEIN_DIR]: Directory to download InterPro release files
-           [-o PROTEOME]: UniProt reference proteome identifier
+           [-r REF_PROTEOME | -t TAXID | -o ORGANISM] : UniProt reference proteome identifier, taxid or Scientific name 
 
 @usage: bsub -M 40000 -R"rusage[mem=40000]" python count_all_proteomes.py -b 76.0 -e 81.0 -d protein_folder -o UPXXXX
 """
@@ -56,9 +59,11 @@ class statistics(proteome):
 
 		"""
 
-        # search the proteome
-        # taxon_proteinlist = self.get_proteins()
-        taxon_proteinlist = self.get_proteins_from_uniprot()
+        # search proteins
+        if self.tax_id:
+            taxon_proteinlist = self.get_proteins()
+        else:
+            taxon_proteinlist = self.get_proteins_from_uniprot()
 
         count_integrated, total_integrated = self.get_integrated(
             taxon_proteinlist, self.old_proteinlist, self.new_proteinlist
@@ -70,19 +75,47 @@ class statistics(proteome):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("-u", "--user", help="username for database connection")
+    parser.add_argument("-p", "--password", help="password for database connection")
+    parser.add_argument("-s", "--schema", help="database schema to connect to")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "-o", "--organism", help="Scientific name of the organism to get the conservation score for"
+    )
+    group.add_argument(
+        "-t", "--taxid", help="Taxid of the organism to get the conservation score for"
+    )
+    group.add_argument(
+        "-r", "--proteome", help="Reference proteome to search the information for", required=True
+    )
     parser.add_argument("-b", "--old_version", help="InterPro version to compare to", required=True)
     parser.add_argument("-e", "--new_version", help="Current InterPro release version")
     parser.add_argument("-d", "--proteindir", help="Protein file directory", required=True)
-    parser.add_argument(
-        "-o", "--proteome", help="Reference proteome to search the information for", required=True
-    )
 
     args = parser.parse_args()
 
     # initialising
     stats = statistics()
     stats.dir = args.proteindir
-    stats.proteome = args.proteome
+
+    # initialise tax_id value
+    if args.organism:
+        if args.user and args.schema and args.password:
+            stats.getConnection(args.user, args.password, args.schema)
+            print(f"Searching taxid for {args.organism}")
+            stats.search_taxid(args.organism)
+        else:
+            print("Error, missing database connection credentials -u user -p password -s schema")
+            sys.exit()
+    elif args.taxid:
+        if args.user and args.schema and args.password:
+            stats.getConnection(args.user, args.password, args.schema)
+            stats.tax_id = args.taxid
+        else:
+            print("Error, missing database connection credentials -u user -p password -s schema")
+            sys.exit()
+    else:
+        stats.proteome = args.proteome
 
     # getting InterPro files
     stats.old_proteinlist = stats.get_protein2ipr_file(args.old_version)
@@ -92,7 +125,13 @@ if __name__ == "__main__":
     count_integrated, protein_count, total_integrated = stats.count()
     percent_integrated = round(count_integrated * 100 / protein_count, 2)
 
-    print(
-        f"Newly created InterPro entries for {stats.proteome} between InterPro {args.old_version} and InterPro {args.new_version}: {count_integrated} (+{percent_integrated}%), total integrated: {total_integrated} of {protein_count}"
-    )
+    if stats.proteome:
+        print(
+            f"Newly created InterPro entries for {stats.proteome} between InterPro {args.old_version} and InterPro {args.new_version}: {count_integrated} (+{percent_integrated}%), total integrated: {total_integrated} of {protein_count}"
+        )
+    else:
+        print(
+            f"Newly created InterPro entries for {stats.tax_id} between InterPro {args.old_version} and InterPro {args.new_version}: {count_integrated} (+{percent_integrated}%), total integrated: {total_integrated} of {protein_count}"
+        )
+        stats.close_connection()
 

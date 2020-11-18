@@ -117,13 +117,14 @@ class proteome:
 		"""
         uniprot_file = os.path.join(self.dir, f"uniprot-proteome_{self.proteome}.list")
         if not os.path.isfile(uniprot_file):
+            print(f"Downloading protein file for {self.proteome} from UniProt)")
             proteome_file = (
                 f"https://www.uniprot.org/uniprot/?query=proteome:{self.proteome}&format=list"
             )
             wget = subprocess.Popen(["wget", "-O", uniprot_file, proteome_file])  # ~5min
             wget.communicate()
 
-        print(f"Getting list of proteins for proteome {self.proteome}")
+        print(f"Loading list of proteins for proteome {self.proteome} into memory")
         with open(uniprot_file, "r") as f:
             proteinlist = dict()
             for line in f:
@@ -145,7 +146,7 @@ class proteome:
         protein_file = os.path.join(self.dir, f"proteinlist_{version}")
         compressed_file = os.path.join(self.dir, f"{version}_protein2ipr.dat.gz")
         if not os.path.isfile(protein_file) or os.path.getsize(protein_file) == 0:
-            print(f"Getting protein file for InterPro {version}")
+            print(f"Downloading protein file for InterPro {version} from ftp")
             if not os.path.isfile(compressed_file) or os.path.getsize(compressed_file) == 0:
                 interpro_file = (
                     f"ftp://ftp.ebi.ac.uk/pub/databases/interpro/{version}/protein2ipr.dat.gz"
@@ -157,7 +158,7 @@ class proteome:
             zcat = subprocess.Popen([cmd], shell=True, stdout=subprocess.PIPE)  # ~ 1hour
             zcat.communicate()
 
-        print(f"Getting list of integrated proteins for InterPro {version}")
+        print(f"Loading list of integrated proteins for InterPro {version} into memory")
         with open(protein_file, "r") as f:
             proteinlist = dict()
             for line in f:
