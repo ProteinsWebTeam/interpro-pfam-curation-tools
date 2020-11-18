@@ -19,6 +19,8 @@ class proteome:
         self.connection = None
         self.cursor = None
         self.tax_id = None
+        self.proteome = None
+        self.dir = None
         self.old_proteinlist = dict()
         self.new_proteinlist = dict()
 
@@ -103,9 +105,45 @@ class proteome:
         # print(f"Found {len(protein_list)} accessions")
         return protein_list
 
-    def get_protein2ipr_file(self, version, folder):
-        protein_file = os.path.join(folder, f"proteinlist_{version}")
-        compressed_file = os.path.join(folder, f"{version}_protein2ipr.dat.gz")
+    def get_proteins_from_uniprot(self):
+        """
+		Search protein accessions for the reference proteome
+
+		Args: None
+
+		Yields: 
+			protein_list: list of proteins
+
+		"""
+        uniprot_file = os.path.join(self.dir, f"uniprot-proteome_{self.proteome}.list")
+        if not os.path.isfile(uniprot_file):
+            proteome_file = (
+                f"https://www.uniprot.org/uniprot/?query=proteome:{self.proteome}&format=list"
+            )
+            wget = subprocess.Popen(["wget", "-O", uniprot_file, proteome_file])  # ~5min
+            wget.communicate()
+
+        print(f"Getting list of proteins for proteome {self.proteome}")
+        with open(uniprot_file, "r") as f:
+            proteinlist = dict()
+            for line in f:
+                line = line.strip("\n")
+                proteinlist[line] = 0
+
+        return proteinlist
+
+    def get_protein2ipr_file(self, version):
+        """
+		Search protein accessions in InterPro entries
+
+		Args: version: InterPro release version
+
+		Yields: 
+			protein_list: list of proteins
+
+		"""
+        protein_file = os.path.join(self.dir, f"proteinlist_{version}")
+        compressed_file = os.path.join(self.dir, f"{version}_protein2ipr.dat.gz")
         if not os.path.isfile(protein_file) or os.path.getsize(protein_file) == 0:
             print(f"Getting protein file for InterPro {version}")
             if not os.path.isfile(compressed_file) or os.path.getsize(compressed_file) == 0:

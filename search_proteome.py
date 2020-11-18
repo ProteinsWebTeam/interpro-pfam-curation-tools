@@ -18,7 +18,7 @@ import os
 import sys
 import traceback
 from pathlib import Path
-
+import re
 import cx_Oracle
 import requests
 
@@ -27,7 +27,7 @@ from utils import proteome
 
 class protein_pipeline(proteome):
     def __init__(self):
-        super().__init__(self)
+        super().__init__()
         self.uniref50 = dict()
         self.clusters = dict()
 
@@ -105,15 +105,22 @@ class protein_pipeline(proteome):
         list_proteins_with_signature = dict()
 
         for chunk in uniprot_chunks:
+            # if comments needed in future:  C.VALUE, LISTAGG(MC.VALUE, '; ') WITHIN GROUP (ORDER BY MC.VALUE) COMMENTS
             protein_list_quote = [f"'{row}'" for row in chunk]
-            request = f"SELECT P.PROTEIN_AC, P.DBCODE, ET.SCIENTIFIC_NAME, M2P.METHOD_AC, MM.PROTEIN_COUNT, LISTAGG(MC.VALUE, '; ') WITHIN GROUP (ORDER BY MC.VALUE) COMMENTS \
+            request = f"SELECT P.PROTEIN_AC, P.DBCODE, ET.SCIENTIFIC_NAME, M2P.METHOD_AC, MM.PROTEIN_COUNT, \
+                    ( SELECT COUNT(*) FROM INTERPRO.MATCH M \
+                    INNER JOIN INTERPRO.PROTEIN P ON M.PROTEIN_AC = P.PROTEIN_AC \
+                    WHERE P.DBCODE = 'S' and M.METHOD_AC = M2P.METHOD_AC ) as SWISS_COUNT \
                     FROM INTERPRO.PROTEIN P \
                     JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
                     JOIN INTERPRO.MV_METHOD2PROTEIN M2P ON P.PROTEIN_AC = M2P.PROTEIN_AC \
                     JOIN INTERPRO.MV_METHOD_MATCH MM ON MM.METHOD_AC = M2P.METHOD_AC \
                     LEFT JOIN INTERPRO.METHOD_COMMENT MC ON MC.METHOD_AC = M2P.METHOD_AC \
-                    WHERE P.PROTEIN_AC IN ({','.join(protein_list_quote)}) \
+                    WHERE P.PROTEIN_AC IN ({','.join(protein_list_quote)})\
+                    AND M2P.METHOD_AC not like '%:SF%' \
+                    AND MC.VALUE IS NULL \
                     GROUP BY P.PROTEIN_AC, P.DBCODE, ET.SCIENTIFIC_NAME, M2P.METHOD_AC, MM.PROTEIN_COUNT"
+
             self.cursor.execute(request)
 
             results = self.cursor.fetchall()
@@ -137,20 +144,25 @@ class protein_pipeline(proteome):
                         row[5],
                     ]
 
-        count_prot_signatures = self.get_count_signature_taxid(list_signatures)
+        # count_prot_signatures = self.get_count_signature_taxid(list_signatures)
 
         unintegrated_file = os.path.join(
             folder, f"unintegrated_prot_in_signatures_{self.tax_id}.csv"
         )
         with open(unintegrated_file, "w") as outf:
-            outf.write(
-                "protein,dbcode,organism,signature,total_prot_count,count_proteome,comment\n"
-            )
+            outf.write("protein,dbcode,organism,signature,total_prot_count,count_swiss_prot\n")
+            # outf.write(
+            #     "protein,dbcode,organism,signature,total_prot_count,count_swiss_prot,count_proteome\n"
+            # )
             for protein, signatures in list_proteins_with_signature.items():
                 for signature, values in signatures.items():
-                    outf.write(
-                        f"{protein},{values[0]},{values[1]},{signature},{values[2]},{count_prot_signatures[signature]},{values[3] if values[3]!=None else ''}\n"
-                    )
+                    if values[3] != 0:
+                        outf.write(
+                            f"{protein},{values[0]},{values[1]},{signature},{values[2]},{values[3]}\n"
+                        )
+                        # outf.write(
+                        #     f"{protein},{values[0]},{values[1]},{signature},{values[2]},{values[3]},{count_prot_signatures[signature]}\n"
+                        # )
         return list_proteins_with_signature.keys()
 
     def search_uniprotid_in_uniref(self, uniprotid):
@@ -242,6 +254,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # search the proteome
+    print(f"Searching list of proteins for {protein_pip.tax_id}")
     protein_list = protein_pip.get_proteins()
 
     # search for integrated proteins
@@ -265,22 +278,22 @@ if __name__ == "__main__":
     # close database connection
     protein_pip.connection.close()
 
-    # clustering unintegrated proteins
-    protein_pip.get_cluster(list_not_in_signature)
-    print(f"{len(protein_pip.clusters)} clusters found")
+    # # clustering unintegrated proteins
+    # protein_pip.get_cluster(list_not_in_signature)
+    # print(f"{len(protein_pip.clusters)} clusters found")
 
-    # write clustering results in file
-    cluster_file = os.path.join(args.folder, f"clusters_proteome_taxid_{protein_pip.tax_id}.csv")
-    with open(cluster_file, "w") as f:
-        f.write("cluster_id,accessions\n")
-        for cluster, accessions in protein_pip.clusters.items():
-            f.write(f"{cluster},{'; '.join(accessions)}\n")
+    # # write clustering results in file
+    # cluster_file = os.path.join(args.folder, f"clusters_proteome_taxid_{protein_pip.tax_id}.csv")
+    # with open(cluster_file, "w") as f:
+    #     f.write("cluster_id,accessions\n")
+    #     for cluster, accessions in protein_pip.clusters.items():
+    #         f.write(f"{cluster},{'; '.join(accessions)}\n")
 
-    uniref50_cluster_file = os.path.join(
-        args.folder, f"all_clusters_taxid_{protein_pip.tax_id}.csv"
-    )
-    with open(uniref50_cluster_file, "w") as f:
-        f.write("cluster_id,count proteome matches,accessions\n")
-        for cluster, accessions in protein_pip.uniref50.items():
-            f.write(f"{cluster},{len(protein_pip.clusters[cluster])},{'; '.join(accessions)}\n")
+    # uniref50_cluster_file = os.path.join(
+    #     args.folder, f"all_clusters_taxid_{protein_pip.tax_id}.csv"
+    # )
+    # with open(uniref50_cluster_file, "w") as f:
+    #     f.write("cluster_id,count proteome matches,accessions\n")
+    #     for cluster, accessions in protein_pip.uniref50.items():
+    #         f.write(f"{cluster},{len(protein_pip.clusters[cluster])},{'; '.join(accessions)}\n")
 
