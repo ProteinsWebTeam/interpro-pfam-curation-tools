@@ -1,4 +1,4 @@
-#JACCARD index calculation between COGs and integrated InterPro entries
+# JACCARD index calculation between COGs and integrated InterPro entries
 
 The process is divided into 5 different steps
 
