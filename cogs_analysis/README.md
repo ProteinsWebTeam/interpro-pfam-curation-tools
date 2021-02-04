@@ -5,6 +5,7 @@ The process is divided into 5 different steps
 1) The representative list of proteins from UNIPROT is loaded in a redis hash (`get_rp_proteins.py`)
 
 2) For each protein in the representative list (`IPR_RP_AC.py`):
+	
 	For each integrated InterPro entry, we calculated the midpoint of the different fragments and count the number of protein matching
     
 	All the data are saved in redis hashes:
