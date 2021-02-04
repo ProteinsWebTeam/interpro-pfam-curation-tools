@@ -14,7 +14,9 @@ The process is divided into 5 different steps
 3) Get the list of COGs into a redis queue which will be used by 8 different jobs submitted in parallel for step 4 (`get_cog_list.py`)
 
 4) For each COG (`search_intersect.py`):
-	For each protein:
+
+		For each protein:
+	
     	- Get IPR and midpoints
     	- Verify if intersection between COG and IPR
 
