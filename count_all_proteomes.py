@@ -49,6 +49,7 @@ if __name__ == "__main__":
         9823: "Sus scrofa",
         4565: "Triticum aestivum",
         4577: "Zea mays",
+        3702: "Arabidopsis thaliana",
     }
 
     ref_proteomes = {
@@ -60,6 +61,7 @@ if __name__ == "__main__":
         4577: "UP000007305",
         4565: "UP000019116",
         183674: "None",
+        3702: "UP000006548",
     }
 
     # initialising
