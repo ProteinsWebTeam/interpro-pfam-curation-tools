@@ -16,10 +16,7 @@
 import argparse
 import os
 import sys
-import traceback
 from pathlib import Path
-import re
-import cx_Oracle
 import requests
 
 from utils import proteome
@@ -103,6 +100,7 @@ class protein_pipeline(proteome):
         uniprot_chunks = list(self.chunks(list(protein_list), 1000))
         list_signatures = set()
         list_proteins_with_signature = dict()
+        nbprot_in_signature = 0
 
         for chunk in uniprot_chunks:
             # if comments needed in future:  C.VALUE, LISTAGG(MC.VALUE, '; ') WITHIN GROUP (ORDER BY MC.VALUE) COMMENTS
@@ -120,29 +118,40 @@ class protein_pipeline(proteome):
                     AND M2P.METHOD_AC not like '%:SF%' \
                     AND MC.VALUE IS NULL \
                     GROUP BY P.PROTEIN_AC, P.DBCODE, ET.SCIENTIFIC_NAME, M2P.METHOD_AC, MM.PROTEIN_COUNT"
-
+            # print(request)
             self.cursor.execute(request)
 
             results = self.cursor.fetchall()
+            nbprot_in_signature += len(results)
             for row in results:
                 protein = row[0]
                 signature = row[3]
                 list_signatures.add(signature)
-                try:
-                    list_proteins_with_signature[protein][signature] = [
+                if signature not in list_proteins_with_signature:
+                    list_proteins_with_signature[signature] = [
+                        protein,
                         row[1],
                         row[2],
                         row[4],
                         row[5],
                     ]
-                except KeyError:
-                    list_proteins_with_signature[protein] = dict()
-                    list_proteins_with_signature[protein][signature] = [
-                        row[1],
-                        row[2],
-                        row[4],
-                        row[5],
-                    ]
+                else:
+                    pass
+                # `try:
+                #     list_proteins_with_signature[protein][signature] = [
+                #         row[1],
+                #         row[2],
+                #         row[4],
+                #         row[5],
+                #     ]
+                # except KeyError:
+                #     list_proteins_with_signature[protein] = dict()
+                #     list_proteins_with_signature[protein][signature] = [
+                #         row[1],
+                #         row[2],
+                #         row[4],
+                #         row[5],
+                #     ]`
 
         # count_prot_signatures = self.get_count_signature_taxid(list_signatures)
 
@@ -154,16 +163,22 @@ class protein_pipeline(proteome):
             # outf.write(
             #     "protein,dbcode,organism,signature,total_prot_count,count_swiss_prot,count_proteome\n"
             # )
-            for protein, signatures in list_proteins_with_signature.items():
-                for signature, values in signatures.items():
-                    if values[3] != 0:
-                        outf.write(
-                            f"{protein},{values[0]},{values[1]},{signature},{values[2]},{values[3]}\n"
-                        )
-                        # outf.write(
-                        #     f"{protein},{values[0]},{values[1]},{signature},{values[2]},{values[3]},{count_prot_signatures[signature]}\n"
-                        # )
-        return list_proteins_with_signature.keys()
+            # for protein, signatures in list_proteins_with_signature.items():
+            #     for signature, values in signatures.items():
+            #         if values[3] != 0:
+            #             outf.write(
+            #                 f"{protein},{values[0]},{values[1]},{signature},{values[2]},{values[3]}\n"
+            #             )
+            for signature, proteins in list_proteins_with_signature.items():
+                if proteins[4] != 0:
+                    outf.write(
+                        f"{proteins[0]},{proteins[1]},{proteins[2]},{signature},{proteins[3]},{proteins[4]}\n"
+                    )
+                    # outf.write(
+                    #     f"{protein},{values[0]},{values[1]},{signature},{values[2]},{values[3]},{count_prot_signatures[signature]}\n"
+                    # )
+        # return list_proteins_with_signature.keys()
+        return nbprot_in_signature
 
     def search_uniprotid_in_uniref(self, uniprotid):
         """
@@ -266,14 +281,17 @@ if __name__ == "__main__":
     print(f"UniProt accessions unintegrated: {len(unintegrated_subset)}")
 
     # search for proteins in unintegrated InterPro signatures
-    list_in_signature = set(
-        protein_pip.get_accession_in_signature(args.folder, unintegrated_subset)
-    )
-    print(f"UniProt accession unintegrated matching signature: {len(list_in_signature)}")
+    list_in_signature = protein_pip.get_accession_in_signature(args.folder, unintegrated_subset)
+
+    # list_in_signature = set(
+    #     protein_pip.get_accession_in_signature(args.folder, unintegrated_subset)
+    # )
+    print(f"UniProt accession unintegrated matching signature: {list_in_signature}")
 
     # list of unintegrated proteins not found in InterPro signatures
-    list_not_in_signature = unintegrated_subset.difference(list_in_signature)
-    print(f"UniProt accession unintegrated with no signature: {len(list_not_in_signature)}")
+    # list_not_in_signature = unintegrated_subset.difference(list_in_signature)
+    list_not_in_signature = len(unintegrated_subset) - list_in_signature
+    print(f"UniProt accession unintegrated with no signature: {list_not_in_signature}")
 
     # close database connection
     protein_pip.connection.close()

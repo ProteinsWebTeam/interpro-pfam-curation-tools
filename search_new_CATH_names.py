@@ -25,41 +25,39 @@ import traceback
 
 class new_cathb:
     def __init__(self, user, password, schema):
-        self.user, self.password = user, password
-        self.schema = schema
-        self.connection = self.getConnection()
-        self.cursor = self.connection.cursor()
-        self.unintegrated = self.getUnIntegratedInEntry()
-        self.descriptions = self.getOldNames()
-        self.protein_counts = self.getProteinCounts()
-        self.integrated = self.getIntegrated()
-        self.comments = dict()
+        self.getConnection(user, password, schema)
 
-    def getConnection(self):
+        self.getOldNames()
+        self.getProteinCounts()
+        self.comments = dict()
+        self.unintegrated = dict()
+
+    def getConnection(self, user, password, schema):
         """
         Set database connection
         """
 
-        connectString = "".join([self.user, "/", self.password, "@", self.schema])
+        connectString = "".join([user, "/", password, "@", schema])
         try:
-            return cx_Oracle.connect(connectString)
+            self.connection = cx_Oracle.connect(connectString)
+            self.cursor = self.connection.cursor()
         except:
             stackTrace = traceback.format_exc()
             print(stackTrace)
             if "invalid username" in stackTrace:
-                print("Could not connect to {0} as user {1}".format(self.schema, self.user))
+                print("Could not connect to {0} as user {1}".format(schema, user))
                 print(
                     "NB if your oracle username contains the '$' character either escape it or surround it with quotes"
                 )
-                print("eg 'ops$craigm' or ops\$craigm")
+                print('eg "ops$craigm" or ops\$craigm')
                 print("Otherwise the shell will remove the '$' and all subsequent characters!")
-            sys.exit(1)
+                sys.exit(1)
 
     def getOldNames(self):
         """
         Search for previous names given by CATH in the database for each method
         """
-        descriptions = dict()
+        self.descriptions = dict()
         request = """SELECT m.METHOD_AC, m.DESCRIPTION
                     FROM INTERPRO.METHOD m 
                     WHERE m.DESCRIPTION is not null and m.METHOD_AC like 'G3DSA%'
@@ -69,81 +67,75 @@ class new_cathb:
         results = self.cursor.fetchall()
 
         for row in results:
-            descriptions[row[0]] = row[1]
-
-        return descriptions
+            self.descriptions[row[0]] = row[1]
 
     def getProteinCounts(self):
         """
         Search for the number of proteins for each method
         """
-        protein_counts = dict()
-        request = """SELECT mm.METHOD_AC, mm.PROTEIN_COUNT
-                    FROM INTERPRO.MV_METHOD_MATCH mm
-                    WHERE mm.METHOD_AC like 'G3DSA%'
+        self.protein_counts = dict()
+        request = """SELECT METHOD_AC, count(PROTEIN_AC)
+                    FROM INTERPRO.MATCH
+                    WHERE METHOD_AC like 'G3DSA%'
+                    GROUP BY METHOD_AC
                 """
 
         self.cursor.execute(request)
         results = self.cursor.fetchall()
 
         for row in results:
-            protein_counts[row[0]] = row[1]
-
-        return protein_counts
+            self.protein_counts[row[0]] = row[1]
 
     def getComments(self, commentfile):
         """
         Search for the curation comments previously assigned to each method
         """
-        pattern = r"([\d\.]+),(.+)"
+        pattern = r"(G3DSA:[\d\.]+),(.+)"
         try:
             with open(commentfile, "r") as f:
                 for line in f:
                     line = line.strip("\n")
+                    print(line)
                     m = re.search(pattern, line)
-                    sf = m.group(1)
-                    sfid = f"G3DSA:{sf}"
-                    self.comments[sfid] = m.group(2)
+                    sfid = m.group(1)
+                    if not sfid in self.comments:
+                        self.comments[sfid] = [m.group(2)]
+                    else:
+                        self.comments[sfid].append(m.group(2))
         except FileNotFoundError as e:
             print(e)
             sys.exit()
 
-    def getUnIntegratedInEntry(self):
+    def getUnintegrated(self):
         """
         Search for integrated methods in unchecked InterPro entries with the curators comments
         """
         unintegrated = dict()
-        request = """SELECT e.ENTRY_AC, e2m.METHOD_AC, LISTAGG(mc.VALUE, '; ') WITHIN GROUP (ORDER BY mc.VALUE) COMMENTS
-        FROM INTERPRO.ENTRY2METHOD e2m
-        LEFT JOIN INTERPRO.ENTRY e on e2m.ENTRY_AC=e.ENTRY_AC
-        LEFT JOIN INTERPRO.METHOD_COMMENT mc on e2m.METHOD_AC=mc.METHOD_AC
-        WHERE e2m.METHOD_AC like 'G3DSA%' AND e.CHECKED='N'
-        GROUP BY e.ENTRY_AC, e2m.METHOD_AC
+        request = """SELECT m.METHOD_AC, e2m.ENTRY_AC
+                    FROM METHOD m
+                    LEFT JOIN INTERPRO.ENTRY2METHOD e2m on m.METHOD_AC=e2m.METHOD_AC
+                    LEFT JOIN INTERPRO.ENTRY e on e2m.ENTRY_AC=e.ENTRY_AC
+                    WHERE m.METHOD_AC like 'G3DSA%' and e2m.METHOD_AC is null
+            UNION
+                    SELECT m.METHOD_AC, e2m.ENTRY_AC
+                    FROM METHOD m
+                    LEFT JOIN INTERPRO.ENTRY2METHOD e2m on m.METHOD_AC=e2m.METHOD_AC
+                    LEFT JOIN INTERPRO.ENTRY e on e2m.ENTRY_AC=e.ENTRY_AC
+                    WHERE m.METHOD_AC like 'G3DSA%' and e.CHECKED='N'
         """
 
         self.cursor.execute(request)
         results = self.cursor.fetchall()
 
         for row in results:
-            if row[2] == "N":
-                self.unintegrated[row[1]] = {"comment": row[3], "entry": row[0]}
+            sfid = row[0]
+            ipr = row[1]
 
-        return unintegrated
-
-    def getIntegrated(self):
-        """
-        Search for integrated methods
-        """
-
-        request = """SELECT e2m.METHOD_AC 
-                    FROM INTERPRO.ENTRY2METHOD e2m
-                    JOIN INTERPRO.ENTRY e on e2m.ENTRY_AC=e.ENTRY_AC
-                    WHERE e.CHECKED='Y'
-                """
-        self.cursor.execute(request)
-        results = self.cursor.fetchall()
-
-        return [row[0] for row in results]
+            if sfid in self.comments:
+                comments = self.comments[sfid]
+            else:
+                comments = []
+            self.unintegrated[sfid] = {"comment": comments, "entry": ipr}
 
     def getSfInfo(self, inputfile):
         """
@@ -151,25 +143,21 @@ class new_cathb:
         """
         self.sf_dict = dict()
         sfid = ""
+        pattern = r"^\d+\.\d+\.\d+\.\d+"
         try:
             with open(inputfile, "r") as f:
                 for line in f:
-                    line = line.strip("\n").split("     ")
-                    if "ID" in line[0]:
-                        sfid = f"G3DSA:{line[1].strip()}"
-                        if sfid in self.unintegrated:
-                            self.sf_dict[sfid] = {
-                                "entry": self.unintegrated[sfid]["entry"],
-                                "comment": self.unintegrated[sfid]["comment"],
-                            }
-                        else:
-                            self.sf_dict[sfid] = {}
+                    line = line.strip("\n").split("    ")
+                    if re.search(pattern, line[0]):
+                        # print(line)
+                        sfid = f"G3DSA:{line[0]}"
 
-                    elif "NAME" in line[0]:
-                        if line[1] != "-":
-                            self.sf_dict[sfid]["name"] = line[1]
-                        else:
-                            del self.sf_dict[sfid]
+                        if sfid in self.unintegrated:
+                            tmp_name = line[2].split(":")[1]
+                            if tmp_name != "":
+                                self.unintegrated[sfid]["name"] = tmp_name
+                            else:
+                                del self.unintegrated[sfid]
         except FileNotFoundError as e:
             print(e)
             sys.exit()
@@ -180,31 +168,28 @@ class new_cathb:
         """
         with open(outputfile, "w") as f:
             f.write(
-                "Process,Gene3D,protein count (01/20),InterPro method name,CATH method name,comment,IPR\n"
+                "Status,Gene3D,protein count (03/21),IPR,comment,Method name in InterPro,CATH method name\n"
             )
-            for sfid in self.sf_dict:
-                string_to_print = ""
-                oldname = ""
+            for sfid in self.unintegrated:
                 count = 0
-                if sfid not in self.integrated:
-                    if sfid in self.protein_counts:
-                        count = self.protein_counts[sfid]
-                    if sfid in self.descriptions:
-                        oldname = self.descriptions[sfid]
-                    if oldname != self.sf_dict[sfid]["name"]:
-                        string_to_print = f",{sfid},{count},{oldname.replace(',',';')},{self.sf_dict[sfid]['name'].replace(',',';')}"
+                newname = self.unintegrated[sfid]["name"].replace(",", ";")
 
-                        if "entry" in self.sf_dict[sfid]:
-                            string_to_print += (
-                                ",self.sf_dict[sfid]['entry'],N,self.sf_dict[sfid]['comment'],"
-                            )
-                        else:
-                            string_to_print += ",,,,"
-                        if self.comments and sfid in self.comments:
-                            string_to_print += self.comments[sfid]
-                        string_to_print += "\n"
+                if sfid in self.protein_counts:
+                    count = self.protein_counts[sfid]
+                if sfid in self.descriptions:
+                    oldname = self.descriptions[sfid].replace(",", ";")
 
-                    f.write(string_to_print)
+                if self.unintegrated[sfid]["entry"] != None:
+                    entry = self.unintegrated[sfid]["entry"]
+                else:
+                    entry = ""
+
+                if len(self.unintegrated[sfid]["comment"]) > 0:
+                    comments = " | ".join(self.unintegrated[sfid]["comment"])
+                else:
+                    comments = ""
+
+                f.write(f",{sfid},{count},{entry},{comments},{oldname},{newname}\n")
 
         print(f"Output file location: {outputfile}")
 
@@ -229,5 +214,6 @@ if __name__ == "__main__":
     if args.commentfile:
         cathb.getComments(args.commentfile)
 
+    cathb.getUnintegrated()
     cathb.getSfInfo(args.inputfile)
     cathb.printNewNames(args.outputfile)
