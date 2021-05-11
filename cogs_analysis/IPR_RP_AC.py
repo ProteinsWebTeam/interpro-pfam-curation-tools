@@ -1,50 +1,32 @@
-import cx_Oracle
-import redis
-import os
-import subprocess
 import json
-from shutil import rmtree
 from itertools import groupby
 
 
-def redis_connection():
-    # Connection to REDIS
-    REDIS_HOST = "ebi-pdbe.ebi.ac.uk"
-    REDIS_PORT = "54321"
-
-    return redis.Redis(host=REDIS_HOST, port=REDIS_PORT)
-
-
 def getMidpoints(fragmentlist):
-    fragments = fragmentlist.split(',')
+    fragments = fragmentlist.split(",")
     midpoints = []
 
     for frag in fragments:
-        start, end = frag.split('-')
-        midpoints.append((int(end)-int(start))/2+float(start))
+        start, end = frag.split("-")
+        midpoints.append((int(end) - int(start)) / 2 + float(start))
 
     return midpoints
 
 
-def main():
-    # redis connection
-    server = redis_connection()
-    redis_protein = 'jaccard_cogs_prot'
-    redis_rp = 'jaccard_cog_rp'
-    redis_ipr_count = 'jaccard_cog_ipr'
+def getRepresentativeInfo(config, server, dbcursor):
+
+    redis_protein = config["redis"]["redis_protein"]
+    redis_rp = config["redis"]["redis_rp"]
+    redis_ipr_count = config["redis"]["redis_ipr_count"]
 
     server.delete(redis_protein)
     server.delete(redis_ipr_count)
 
-    # iprel connection
-    dsn = cx_Oracle.makedsn("ora-hxvm5-011.ebi.ac.uk", "1551", 'iprel')
-    connection = cx_Oracle.connect(
-        user='interpro_webserver', password='iwebserv', dsn=dsn)
-    dbcursor = connection.cursor()
-
     # get ipr and representative proteins
     print("Calculating InterPro integrated entries midpoints")
 
+    ##### This need to be replaced as IPREL schema and this table don't exist anymore ######
+    #### idea: use InterPro API: https://www.ebi.ac.uk/interpro/api/protein/uniprot/entry/interpro/ #####
     request = "SELECT s.ENTRY_AC,s.PROTEIN_AC,s.FRAGMENTS \
         FROM INTERPRO.UPI_SUPERMATCH_STG_NO_UPI_NEW s \
         JOIN INTERPRO.ENTRY e on e.ENTRY_AC=s.ENTRY_AC \
@@ -65,9 +47,8 @@ def main():
 
                 # add protein to ipr_count list
                 if server.hexists(redis_ipr_count, ipr):
-                    ipr_count = int(server.hget(
-                        redis_ipr_count, ipr).decode('utf-8'))
-                    server.hset(redis_ipr_count, ipr, ipr_count+1)
+                    ipr_count = int(server.hget(redis_ipr_count, ipr).decode("utf-8"))
+                    server.hset(redis_ipr_count, ipr, ipr_count + 1)
                 else:
                     server.hset(redis_ipr_count, ipr, 1)
 
@@ -79,5 +60,3 @@ def main():
 
     print("Calculating InterPro integrated entries midpoints completed")
 
-
-main()
