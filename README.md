@@ -25,10 +25,10 @@ Usage: `python proteome_count/count_all_proteome.py -u USER -p PASSWORD -s DB_SC
 The scripts are available under the **pfam_deduf** subdirectory
 
 ### Search Pfam DUF in InterPro entries and count swissprot matches
-Usage: `python pfam_duf/deduf_main.py -u interpro -p ***REMOVED*** -s IPPRO -d results/duf -o 1`
+Usage: `python pfam_duf/deduf_main.py -u USER -p PASSWORD -s DB_SCHEMA -d results/duf -o 1`
 
 ### Search Pfam DUF in litterature
-Usage: `python pfam_duf/deduf_main.py -u interpro -p ***REMOVED*** -s IPPRO -d results/duf -o 2`
+Usage: `python pfam_duf/deduf_main.py -u USER -p PASSWORD -s DB_SCHEMA -d results/duf -o 2`
 
 
 ## COGs analysis

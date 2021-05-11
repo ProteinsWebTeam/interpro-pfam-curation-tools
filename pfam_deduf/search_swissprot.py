@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 from deduf_utils import pfam_duf
-import sys, errno, re, json, ssl
+import sys, re, json, ssl
 from urllib import request
 from urllib.error import HTTPError
 from time import sleep
-import os
 
 
 class pfam_swiss(pfam_duf):
@@ -25,21 +24,24 @@ class pfam_swiss(pfam_duf):
         }
 
     def get_list_swissprot_names(self):
+        print("Searching for SwissProt matches")
         for pfamid in self.list_duf:
             self.get_list_swissprot_names_pfam(pfamid)
 
     def get_list_swissprot_names_pfam(self, pfamid):
 
         BASE_URL = f"https://www.ebi.ac.uk:443/interpro/api/protein/reviewed/entry/pfam/{pfamid}/?page_size=200"
-        swissprot_names = self.output_list(BASE_URL)
+        swissprot_names, swissprot_acc, count_swissprot = self.output_list(BASE_URL)
         self.list_duf[pfamid]["swissprot"] = swissprot_names
-        self.list_duf[pfamid]["swissprot_count"] = len(swissprot_names)
+        self.list_duf[pfamid]["swissprot_acc"] = swissprot_acc
+        self.list_duf[pfamid]["swissprot_count"] = count_swissprot
 
-    def save_swissprot_in_file(self, outputdir):
-        outputfile = os.path.join(outputdir, "duf_swiss_names.csv")
+    def save_swissprot_in_file(self, outputfile):
+        print(f"Saving results in {outputfile}")
+
         with open(outputfile, "w") as outf:
             outf.write(
-                "Status,Pfam identifier\tPfam short name\tInterPro identifier\tAVG number of domains per InterPro\tInterPro entry name\tSwissprot count\tList swissprot names\n"
+                "Status\tPfam identifier\tPfam short name\tInterPro identifier\tAVG number of domains per InterPro\tInterPro entry name\tSwissprot count\tList swissprot names\n"
             )
 
             for pfamid, content in self.list_duf.items():
@@ -66,6 +68,8 @@ class pfam_swiss(pfam_duf):
 
         attempts = 0
         list_names = set()
+        count_swissprot = 0
+        list_accessions = set()
 
         while next:
             try:
@@ -99,6 +103,7 @@ class pfam_swiss(pfam_duf):
                         sys.stderr.write("LAST URL: " + next)
                         raise e
 
+            count_swissprot = payload["count"]
             for i, item in enumerate(payload["results"]):
 
                 # add to dictionary {accession:name}
@@ -106,9 +111,11 @@ class pfam_swiss(pfam_duf):
 
                 # add name to set of swissprot names
                 list_names.add(item["metadata"]["name"])
+                list_accessions.add(item["metadata"]["accession"])
 
             # Don't overload the server, give it time before asking for more
             if next:
                 sleep(1)
 
-        return list_names
+        # print(list_names, list_accessions, count_swissprot)
+        return list_names, list_accessions, count_swissprot

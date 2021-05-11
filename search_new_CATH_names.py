@@ -17,7 +17,6 @@
 
 import argparse
 import cx_Oracle
-import os
 import sys
 import re
 import traceback
@@ -110,7 +109,6 @@ class new_cathb:
         """
         Search for integrated methods in unchecked InterPro entries with the curators comments
         """
-        unintegrated = dict()
         request = """SELECT m.METHOD_AC, e2m.ENTRY_AC
                     FROM METHOD m
                     LEFT JOIN INTERPRO.ENTRY2METHOD e2m on m.METHOD_AC=e2m.METHOD_AC

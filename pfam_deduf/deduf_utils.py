@@ -2,7 +2,6 @@
 
 
 import sys
-import os
 import cx_Oracle
 import traceback
 import re
@@ -89,9 +88,8 @@ class pfam_duf:
             for row in self.cursor:
                 self.count_interpro_dom[row[0]] = row[1]
 
-    def save_duf_list_in_file(self, outdir):
-        outfile = os.path.join(outdir, "list_duf.csv")
-        outfileipr = os.path.join(outdir, "list_duf_with_ipr_name.csv")
+    def save_duf_list_in_file(self, outfile, outfileipr):
+
         with open(outfile, "w") as outf, open(outfileipr, "w") as outfipr:
             outf.write("pfamid,dufid,ipr,avg nb domains per ipr,ipr entry name\n")
             outfipr.write("pfamid,dufid,ipr,avg nb domains per ipr,ipr entry name\n")
