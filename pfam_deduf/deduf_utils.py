@@ -36,6 +36,14 @@ class pfam_duf:
                 print("Otherwise the shell will remove the '$' and all subsequent characters!")
                 sys.exit(1)
 
+    def close_connection(self):
+        """
+		Close database connection
+		"""
+
+        self.cursor.close()
+        self.connection.close()
+
     def chunks(self, l, n):
         """Yield chunks of size n from iterable.
 

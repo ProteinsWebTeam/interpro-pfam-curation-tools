@@ -1,4 +1,4 @@
-# interpro-curation-tools
+# interpro-pfam-curation-tools
 Scripts to help InterPro and Pfam curation, this project has multiple modules
 
 ## Requirements

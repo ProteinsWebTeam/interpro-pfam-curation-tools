@@ -12,7 +12,7 @@
 
 @usage Start interactive shell with 20K memory: bsub -M 20000 -R"rusage[mem=20000]" -n 5 -Is $SHELL
        source oracle 11.2: source ~oracle/ora112setup.sh
-       run script: python search_unintegrated_cov.py -u interpro -p xxx -s IPPRO -d MEMBERDB
+       run script: python search_unintegrated_cov.py -u USER -p PASSWORD -s SCHEMA -d MEMBERDB
 
 """
 
