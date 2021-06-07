@@ -64,7 +64,6 @@ class pfam_swiss(pfam_duf):
         context = ssl._create_unverified_context()
 
         next = BASE_URL
-        last_page = False
 
         attempts = 0
         list_names = set()
@@ -87,8 +86,7 @@ class pfam_swiss(pfam_duf):
                 payload = json.loads(res.read().decode())
                 next = payload["next"]
                 attempts = 0
-                if not next:
-                    last_page = True
+
             except HTTPError as e:
                 if e.code == 408:
                     sleep(61)

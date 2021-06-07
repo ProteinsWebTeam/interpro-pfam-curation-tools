@@ -20,28 +20,26 @@ from utils import proteome
 
 
 class statistics(proteome):
-    def get_integrated(self, taxon_proteinlist, old_proteinlist, new_proteinlist):
+    def get_integrated(self, taxon_proteinlist):
 
         """ Description:  Search integrated proteins between 2 InterPro releases
 
         Args:
-            taxon_proteinlist: list containing proteins to search for
-            old_proteinlist: list of proteins integrated in old InterPro version
-            end_date: list of proteins integrated in new InterPro version
+            taxon_proteinlist: list containing proteins for a particular taxon/proteome to search for
 
         Yields:
             count_integrated: number proteins newly integrated in InterPro entries
-            len(taxon_proteinlist): total number of proteins for the current taxon
             total_integrated: total number of proteins integrated in InterPro entries
 
         """
 
         integrated_new = 0
         integrated_old = 0
+        # search if protein for taxon/proteome is integrated
         for protein in taxon_proteinlist:
-            if protein in old_proteinlist:
+            if protein in self.old_proteinlist:  # old interpro version
                 integrated_old += 1
-            if protein in new_proteinlist:
+            if protein in self.new_proteinlist:  # new interpro version
                 integrated_new += 1
 
         return integrated_new - integrated_old, integrated_new
@@ -60,14 +58,12 @@ class statistics(proteome):
 		"""
 
         # search proteins
-        if self.tax_id:
+        if self.tax_id:  # taxid
             taxon_proteinlist = self.get_proteins()
-        else:
+        else:  # proteome
             taxon_proteinlist = self.get_proteins_from_uniprot()
 
-        count_integrated, total_integrated = self.get_integrated(
-            taxon_proteinlist, self.old_proteinlist, self.new_proteinlist
-        )
+        count_integrated, total_integrated = self.get_integrated(taxon_proteinlist)
 
         return count_integrated, len(taxon_proteinlist), total_integrated
 

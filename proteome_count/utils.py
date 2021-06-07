@@ -12,6 +12,8 @@ import os
 import sys
 import traceback
 import subprocess
+from urllib import request
+import re
 
 
 class proteome:
@@ -101,7 +103,7 @@ class proteome:
 			WHERE P.TAX_ID=:1"
 
         self.cursor.execute(request, (self.tax_id,))
-        protein_list = [row[0] for row in self.cursor]
+        protein_list = set(row[0] for row in self.cursor)
         # print(f"Found {len(protein_list)} accessions")
         return protein_list
 
@@ -126,10 +128,10 @@ class proteome:
 
         print(f"Loading list of proteins for proteome {self.proteome} into memory")
         with open(uniprot_file, "r") as f:
-            proteinlist = dict()
+            proteinlist = set()
             for line in f:
                 line = line.strip("\n")
-                proteinlist[line] = 0
+                proteinlist.add(line)
 
         return proteinlist
 
@@ -160,10 +162,10 @@ class proteome:
 
         print(f"Loading list of integrated proteins for InterPro {version} into memory")
         with open(protein_file, "r") as f:
-            proteinlist = dict()
+            proteinlist = set()
             for line in f:
                 line = line.strip("\n")
-                proteinlist[line] = 0
+                proteinlist.add(line)
 
         return proteinlist
 
