@@ -46,10 +46,10 @@ if __name__ == "__main__":
 
     if args.step1:
         print("Starting step 1")
-        # print(f"Deleting previous data from redis queue {redis_rp}")
-        # server.delete(redis_rp)
+        print(f"Deleting previous data from redis queue {redis_rp}")
+        server.delete(redis_rp)
 
-        # getProteinAccessions(server, pfile, redis_rp)
+        getProteinAccessions(server, pfile, redis_rp)
 
     if args.step2:
         if server.exists(redis_rp):
