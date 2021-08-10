@@ -28,7 +28,7 @@ class memberdb_pmid:
         # disable SSL verification to avoid config issues
         context = ssl._create_unverified_context()
 
-        next = f"https://www.ebi.ac.uk/interpro/api/protein/entry/{self.database}/{signature}/"
+        next = f"https://www.ebi.ac.uk:443/interpro/api/protein/entry/{self.database}/{signature}/"
 
         attempts = 0
 
@@ -76,7 +76,7 @@ class memberdb_pmid:
             return False
 
     def process_sign(self, signature):
-        url = f"https://www.ebi.ac.uk/interpro/api/protein/unreviewed/entry/{self.database}/{signature}/?page_size=200"
+        url = f"https://www.ebi.ac.uk:443/interpro/api/protein/unreviewed/entry/{self.database}/{signature}/?page_size=200"
         list_pmid_acc = self.search_trembl_pmid(url)
 
         if len(list_pmid_acc) != 0:

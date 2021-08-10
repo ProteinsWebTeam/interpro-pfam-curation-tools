@@ -39,7 +39,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if not os.path.isfile(args.config):
-        parser.error(f"Cannot open '{args.config}'': " f"no such file or directory")
+        parser.error(f"Cannot open '{args.config}': " f"no such file or directory")
 
     config = ConfigParser()
     config.read(args.config)
