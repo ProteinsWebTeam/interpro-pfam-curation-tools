@@ -12,8 +12,6 @@ import os
 import sys
 import traceback
 import subprocess
-from urllib import request
-import re
 
 
 class proteome:
@@ -100,7 +98,8 @@ class proteome:
         request = "SELECT UNIQUE P.PROTEIN_AC \
 			FROM INTERPRO.PROTEIN P \
 			JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
-			WHERE P.TAX_ID=:1"
+			WHERE P.TAX_ID=:1 \
+            AND P.FRAGMENT='N' "
 
         self.cursor.execute(request, (self.tax_id,))
         protein_list = set(row[0] for row in self.cursor)

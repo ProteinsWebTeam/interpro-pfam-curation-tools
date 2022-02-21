@@ -5,13 +5,12 @@
 
 @brief This script searches DUF Pfam and tries to find evidence of characterisation
 
-@arguments [-u USER]: database user
-           [-p PASSWORD]: database password for the user
-           [-s SCHEMA]: database schema to use
+@arguments [CONFIG_FILE]: file containing database connection and files location (see config_pfam.ini)
            [-o OPTION]: 1)search swissprot names for unintegrated pfam DUF  
                         2)search for DUF in literature
                         3)search GO term/keywords in Swissprot matches
-           [-f INPUTFILE]: if -o 3 a file containing a subset of identifiers and their InterPro matches can be imported, by default the file result of -o 1 is used
+                        4)search predicted structures
+
 """
 
 import argparse
@@ -21,7 +20,7 @@ from configparser import ConfigParser
 from search_swissprot import pfam_swiss
 from search_literature import pfam_litterature
 from search_go_keywords import pfam_go
-
+from search_models import pfam_model
 
 if __name__ == "__main__":
 
@@ -31,9 +30,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-o",
         "--option",
-        help="specify option to run 1)search swissprot names for unintegrated pfam DUF  2)search for DUF in literature",
+        help="specify option to run 1)search swissprot names for unintegrated pfam DUF  2)search for DUF in literature 3)search GO terms/keywords in SwissProt 4)search predicted structures",
         required=True,
-        default=[1, 2, 3],
+        default=[1, 2, 3, 4],
     )
 
     args = parser.parse_args()
@@ -48,6 +47,7 @@ if __name__ == "__main__":
     outfile = os.path.join(outputdir, "list_duf.csv")
     outfileipr = os.path.join(outputdir, "list_duf_with_ipr_name.csv")
     outputswiss = os.path.join(outputdir, "duf_swiss_names.tsv")
+    model_dir = config["dir"]["modeldir"]
 
     # database connection values
     user = config["database"]["user"]
@@ -103,4 +103,13 @@ if __name__ == "__main__":
 
         except FileNotFoundError:
             print(f"Error file {outputswiss} not found, run option 1 first")
+
+    elif args.option == "4":
+        print("Searching for predicted structures ")
+        pfam_pip = pfam_model(model_dir)
+        pfam_pip.getConnection(user, password, schema)
+        pfam_pip.get_pfam_duf_list()
+        pfam_pip.close_connection()
+
+        pfam_pip.search_model_families()
 

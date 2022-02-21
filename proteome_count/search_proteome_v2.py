@@ -11,9 +11,7 @@
 """
 
 import argparse
-import os
-import sys
-from pathlib import Path
+import os, re, sys
 import requests
 from configparser import ConfigParser
 
@@ -39,7 +37,7 @@ class protein_pipeline(proteome):
         """
 
         print("Searching for integrated proteins")
-        uniprot_chunks = list(self.chunks(protein_list, 1000))
+        uniprot_chunks = self.chunks(list(protein_list), 1000)
 
         list_integrated = set()
         for chunk in uniprot_chunks:
@@ -47,7 +45,8 @@ class protein_pipeline(proteome):
             request = f"SELECT P.PROTEIN_AC \
                     FROM INTERPRO.MV_ENTRY2PROTEIN E2P \
                     JOIN INTERPRO.PROTEIN P ON E2P.PROTEIN_AC=P.PROTEIN_AC \
-                    WHERE E2P.PROTEIN_AC IN ({','.join(protein_list_quote)})"
+                    WHERE E2P.PROTEIN_AC IN ({','.join(protein_list_quote)}) \
+                    AND P.FRAGMENT='N'"
             self.cursor.execute(request)
 
             list_integrated.update(set([row[0] for row in self.cursor]))
@@ -73,8 +72,11 @@ class protein_pipeline(proteome):
                 FROM INTERPRO.PROTEIN P \
                 JOIN INTERPRO.MV_METHOD2PROTEIN M2P ON P.PROTEIN_AC = M2P.PROTEIN_AC \
                 JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
-                WHERE ET.TAX_ID=:1 AND M2P.METHOD_AC IN ({','.join(signature_list_quote)}) \
+                WHERE ET.TAX_ID=:1 \
+                AND M2P.METHOD_AC IN ({','.join(signature_list_quote)}) \
+                AND P.FRAGMENT='N' \
                 GROUP BY M2P.METHOD_AC"
+
             self.cursor.execute(request, (self.tax_id,))
             count_prot_signatures.update({row[0]: row[1] for row in self.cursor})
 
@@ -96,87 +98,92 @@ class protein_pipeline(proteome):
 
         print("Searching for unintegrated proteins in signature")
         uniprot_chunks = list(self.chunks(list(protein_list), 1000))
-        list_signatures = set()
-        list_proteins_with_signature = dict()
+        list_signatures_processed = set()
+        # list_proteins_with_signature = dict()
         nbprot_in_signature = 0
-
-        for chunk in uniprot_chunks:
-            # if comments needed in future:  C.VALUE, LISTAGG(MC.VALUE, '; ') WITHIN GROUP (ORDER BY MC.VALUE) COMMENTS
-            protein_list_quote = [f"'{row}'" for row in chunk]
-            request = f"SELECT P.PROTEIN_AC, P.DBCODE, ET.SCIENTIFIC_NAME, M2P.METHOD_AC, MM.PROTEIN_COUNT, \
-                    ( SELECT COUNT(*) FROM INTERPRO.MATCH M \
-                    INNER JOIN INTERPRO.PROTEIN P ON M.PROTEIN_AC = P.PROTEIN_AC \
-                    WHERE P.DBCODE = 'S' and M.METHOD_AC = M2P.METHOD_AC ) as SWISS_COUNT \
-                    FROM INTERPRO.PROTEIN P \
-                    JOIN INTERPRO.ETAXI ET ON P.TAX_ID = ET.TAX_ID \
-                    JOIN INTERPRO.MV_METHOD2PROTEIN M2P ON P.PROTEIN_AC = M2P.PROTEIN_AC \
-                    JOIN INTERPRO.MV_METHOD_MATCH MM ON MM.METHOD_AC = M2P.METHOD_AC \
-                    LEFT JOIN INTERPRO.METHOD_COMMENT MC ON MC.METHOD_AC = M2P.METHOD_AC \
-                    WHERE P.PROTEIN_AC IN ({','.join(protein_list_quote)})\
-                    AND M2P.METHOD_AC not like '%:SF%' \
-                    AND MC.VALUE IS NULL \
-                    GROUP BY P.PROTEIN_AC, P.DBCODE, ET.SCIENTIFIC_NAME, M2P.METHOD_AC, MM.PROTEIN_COUNT"
-            # print(request)
-            self.cursor.execute(request)
-
-            results = self.cursor.fetchall()
-            nbprot_in_signature += len(results)
-            for row in results:
-                protein = row[0]
-                signature = row[3]
-                list_signatures.add(signature)
-                if signature not in list_proteins_with_signature:
-                    list_proteins_with_signature[signature] = [
-                        protein,
-                        row[1],
-                        row[2],
-                        row[4],
-                        row[5],
-                    ]
-                else:
-                    pass
-                # `try:
-                #     list_proteins_with_signature[protein][signature] = [
-                #         row[1],
-                #         row[2],
-                #         row[4],
-                #         row[5],
-                #     ]
-                # except KeyError:
-                #     list_proteins_with_signature[protein] = dict()
-                #     list_proteins_with_signature[protein][signature] = [
-                #         row[1],
-                #         row[2],
-                #         row[4],
-                #         row[5],
-                #     ]`
-
-        # count_prot_signatures = self.get_count_signature_taxid(list_signatures)
-
         unintegrated_file = os.path.join(
             folder, f"unintegrated_prot_in_signatures_{self.tax_id}.csv"
         )
         with open(unintegrated_file, "w") as outf:
-            outf.write("protein,dbcode,organism,signature,total_prot_count,count_swiss_prot\n")
-            # outf.write(
-            #     "protein,dbcode,organism,signature,total_prot_count,count_swiss_prot,count_proteome\n"
-            # )
-            # for protein, signatures in list_proteins_with_signature.items():
-            #     for signature, values in signatures.items():
-            #         if values[3] != 0:
-            #             outf.write(
-            #                 f"{protein},{values[0]},{values[1]},{signature},{values[2]},{values[3]}\n"
-            #             )
-            for signature, proteins in list_proteins_with_signature.items():
-                if proteins[4] != 0:
-                    outf.write(
-                        f"{proteins[0]},{proteins[1]},{proteins[2]},{signature},{proteins[3]},{proteins[4]}\n"
-                    )
-                    # outf.write(
-                    #     f"{protein},{values[0]},{values[1]},{signature},{values[2]},{values[3]},{count_prot_signatures[signature]}\n"
-                    # )
-        # return list_proteins_with_signature.keys()
+            outf.write("signature,total_prot_count,count_swiss_prot\n")
+
+            for chunk in uniprot_chunks:
+                # if comments needed in future:  C.VALUE, LISTAGG(MC.VALUE, '; ') WITHIN GROUP (ORDER BY MC.VALUE) COMMENTS
+                protein_list_quote = [f"'{row}'" for row in chunk]
+                request = f"SELECT M2P.METHOD_AC \
+                            FROM INTERPRO.PROTEIN P \
+                            JOIN INTERPRO.MV_METHOD2PROTEIN M2P ON P.PROTEIN_AC = M2P.PROTEIN_AC \
+                            LEFT JOIN INTERPRO.ENTRY2METHOD E2M ON E2M.METHOD_AC = M2P.METHOD_AC \
+                            WHERE P.PROTEIN_AC IN ({','.join(protein_list_quote)}) \
+                            AND P.FRAGMENT='N' \
+                            AND M2P.METHOD_AC not like '%:SF%'\
+                            AND E2M.METHOD_AC is null"
+
+                # print(request)
+                self.cursor.execute(request)
+
+                results = self.cursor.fetchall()
+                nbprot_in_signature += len(results)
+                for row in results:
+                    signature = row[0]
+
+                    if signature not in list_signatures_processed:
+                        list_signatures_processed.add(signature)
+                        # ony consider CDD and PANTHER family signatures
+                        if re.search("cd", signature) or re.search("PTHR.+", signature):
+                            if not self.has_comment(signature):
+                                swissprot_count = self.get_swissprot_count(signature)
+
+                                # print(signature, protein_count, swissprot_count)
+                                if swissprot_count > 0:
+                                    protein_count = self.get_protein_count(signature)
+                                    outf.write(f"{signature},{protein_count},{swissprot_count}\n")
+                                # list_proteins_with_signature[signature] = [
+                                #     protein_count,
+                                #     swissprot_count,
+                                # ]
+
+                # for signature, proteins in list_proteins_with_signature.items():
+                #     if proteins[1] != 0:
+                #         outf.write(f"{signature},{proteins[0]},{proteins[1]},\n")
         return nbprot_in_signature
+
+    def has_comment(self, signature):
+        request = f"select mc.value\
+                    from interpro.method m \
+                    left join interpro.method_comment mc on mc.method_ac=m.method_ac \
+                    where m.method_ac='{signature}' and mc.status='Y'"
+
+        self.cursor.execute(request)
+        comments = []
+        for row in self.cursor:
+            comments.append(row[0])
+        if len(comments) > 0:
+            return True
+
+        return False
+
+    def get_protein_count(self, signature):
+        request = f"SELECT COUNT(UNIQUE M.PROTEIN_AC) \
+                    FROM INTERPRO.MATCH M \
+                    JOIN INTERPRO.PROTEIN P ON M.PROTEIN_AC = P.PROTEIN_AC \
+                    WHERE M.METHOD_AC='{signature}' \
+                    AND P.FRAGMENT='N' "
+
+        self.cursor.execute(request)
+        return self.cursor.fetchone()[0]
+
+    def get_swissprot_count(self, signature):
+        request = f"SELECT COUNT(M.PROTEIN_AC) \
+                FROM INTERPRO.MATCH M \
+                INNER JOIN INTERPRO.PROTEIN P ON M.PROTEIN_AC = P.PROTEIN_AC \
+                JOIN INTERPRO.MV_METHOD2PROTEIN M2P ON P.PROTEIN_AC = M2P.PROTEIN_AC\
+                WHERE P.DBCODE = 'S' \
+                AND P.FRAGMENT = 'N' \
+                AND M.METHOD_AC = M2P.METHOD_AC \
+                AND M2P.METHOD_AC='{signature}'"
+        self.cursor.execute(request)
+        return self.cursor.fetchone()[0]
 
     def search_uniprotid_in_uniref(self, uniprotid):
         """
@@ -260,7 +267,7 @@ if __name__ == "__main__":
     protein_pip.getConnection(user, password, schema)
 
     # create output directory if it doesn't exist
-    Path(outputdir).mkdir(parents=True, exist_ok=True)
+    os.makedirs(outputdir, exist_ok=True)
 
     # initialise tax_id value
     if args.organism:
