@@ -5,32 +5,23 @@
 
 @brief This script counts newly created InterPro entries between 2 InterPro release versions from proteomes or taxid of key species (InterPro BBR grant)
 
-@arguments [-u USER]: database user (if -r taxid)
-           [-p PASSWORD]: database password for the user (if -r taxid)
-           [-s SCHEMA]: database schema to use (if -r taxid)
-           [-b OLD_RELEASE_VERSION]: InterPro version to start the comparison
-           [-e NEW_RELEASE_VERSION]: InterPro version to stop the comparison
-           [-d PROTEIN_DIR]: Directory to download InterPro release files
+@arguments [CONFIG_FILE]: file containing database connection and files location (see config.ini)
            [-r taxid | proteome]: Specify if search for a taxid or a reference proteome
 
-@usage: bsub -M 40000 -R"rusage[mem=40000]" python count_all_proteomes.py -b 76.0 -e 81.0 -d data_folder
+@usage example: bsub -M 40000 -R"rusage[mem=40000]" python count_all_proteomes.py config.ini -r taxid | proteome
 """
 
 
 import argparse
-import sys
+import sys, os
+from configparser import ConfigParser
 
 from count_integrated_proteome import statistics
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-u", "--user", help="username for database connection")
-    parser.add_argument("-p", "--password", help="password for database connection")
-    parser.add_argument("-s", "--schema", help="database schema to connect to")
-    parser.add_argument("-b", "--old_version", help="InterPro version to compare to", required=True)
-    parser.add_argument("-e", "--new_version", help="Current InterPro release version")
-    parser.add_argument("-d", "--proteindir", help="Protein file directory", required=True)
+    parser.add_argument("config", metavar="FILE", help="configuration file")
     parser.add_argument(
         "-r",
         "--ref_type",
@@ -64,29 +55,36 @@ if __name__ == "__main__":
         3702: "UP000006548",
     }
 
+    if not os.path.isfile(args.config):
+        parser.error(f"Cannot open '{args.config}': " f"no such file or directory")
+
+    config = ConfigParser()
+    config.read(args.config)
+
     # initialising
     stats = statistics()
-    stats.dir = args.proteindir
+    stats.dir = config["dir"]["proteindir"]
 
     # verifying all database parameters are provided
     if args.ref_type == "taxid":
-        if args.user and args.schema and args.password:
-            stats.getConnection(args.user, args.password, args.schema)
-        else:
-            print("Error, missing database connection credentials -u user -p password -s schema")
+        try:
+            stats.getConnection(config["database"]["user"], config["database"]["password"], config["database"]["schema"])
+        except Exception as e:
+            print(f"Error {e}, invalid database connection credentials")
             sys.exit()
 
     # getting InterPro files
-    stats.old_proteinlist = stats.get_protein2ipr_file(args.old_version)
-    stats.new_proteinlist = stats.get_protein2ipr_file(args.new_version)
+    stats.old_proteinlist = stats.get_protein2ipr_file(config["interpro"]["old_version"])
+    stats.new_proteinlist = stats.get_protein2ipr_file(config["interpro"]["new_version"])
 
-    print("Searching integrated proteomes")
+    print("Searching integrated proteins")
 
     count_integrated_all = dict()
 
     for taxid, proteome in ref_proteomes.items():
         if args.ref_type == "taxid":
             stats.tax_id = taxid
+            print(f"searching integrated taxid {taxid}")
         else:
             if proteome != "None":
                 print(taxid, proteome)
