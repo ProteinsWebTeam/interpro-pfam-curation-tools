@@ -8,7 +8,7 @@ Python 3.6 and above
 The scripts are available under the **pfam_deduf** subdirectory
 
 ### List of Pfam entries that could potentially be deDUFFED
-Execute queries in the Pronto postgres database to find Pfam entries that could potentially be deDUFFED.
+Execute queries in the Pronto postgres database (`find_deduf.sql`) to find Pfam entries that could potentially be deDUFFED.
 - Entries that have PDB strucutres
 - Entries that have SwissProt matches
 
