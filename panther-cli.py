@@ -485,31 +485,20 @@ def main():
     parser_exp.add_argument("-o", help="output file", required=True)
     parser_exp.set_defaults(func=export)
 
-    parser_del = subparsers.add_parser("list",
-                                       help="list deleted signatures")
-    parser_del.add_argument("-1", dest="f1", help="current version file",
-                            required=True)
-    parser_del.add_argument("-2", dest="f2", help="next version file",
-                            required=True)
+    parser_del = subparsers.add_parser("list", help="list deleted signatures")
+    parser_del.add_argument("-1", dest="f1", help="current version file", required=True)
+    parser_del.add_argument("-2", dest="f2", help="next version file", required=True)
     parser_del.set_defaults(func=list_deleted)
 
-    parser_rep = subparsers.add_parser("find",
-                                        help="find replacements "
-                                             "for deleted signatures")
-    parser_rep.add_argument("-1", dest="f1", help="current version file",
-                            required=True)
-    parser_rep.add_argument("-2", dest="f2", help="next version file",
-                            required=True)
-    parser_rep.add_argument("-3", dest="f3", help="deleted signatures file",
-                            required=True)
+    parser_rep = subparsers.add_parser("find", help="find replacements for deleted signatures")
+    parser_rep.add_argument("-1", dest="f1", help="current version file", required=True)
+    parser_rep.add_argument("-2", dest="f2", help="next version file", required=True)
+    parser_rep.add_argument("-3", dest="f3", help="deleted signatures file", required=True)
     parser_rep.set_defaults(func=find_replacements)
 
-    parser_rep = subparsers.add_parser("diff",
-                                        help="find gained/lost sequences")
-    parser_rep.add_argument("-1", dest="f1", help="current version file",
-                            required=True)
-    parser_rep.add_argument("-2", dest="f2", help="next version file",
-                            required=True)
+    parser_rep = subparsers.add_parser("diff", help="find gained/lost sequences")
+    parser_rep.add_argument("-1", dest="f1", help="current version file", required=True)
+    parser_rep.add_argument("-2", dest="f2", help="next version file", required=True)
     parser_rep.set_defaults(func=find_sequences)
 
     args = parser.parse_args()

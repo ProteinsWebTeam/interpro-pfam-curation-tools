@@ -1,10 +1,5 @@
-results/
 *.csv
 *.tsv
 *.txt
 config_local.ini
-config_pfam_local.ini
-boring_pmids_2
-output/
-output2/
 *.log
