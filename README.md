@@ -16,7 +16,7 @@ Execute queries in the Pronto postgres database to find Pfam entries that could 
 Usage: `python pfam_duf/deduf_main.py config_pfam.ini [-o OPTION]: 1)search swissprot names for unintegrated pfam DUF 2)search for DUF in literature 3)search GO term/keywords in Swissprot matches 4)search predicted structures`
 
 ## Identify InterPro entries that don't have Pfam coverage
-
+See README file in the **interpro_no_pfam** subdirectory for instructions.
 
 ## COGs analysis
 The scripts are available under the **cogs_analysis** subdirectory. 
