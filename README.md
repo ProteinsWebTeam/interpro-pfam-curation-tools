@@ -15,6 +15,9 @@ Execute queries in the Pronto postgres database (`find_deduf.sql`) to find Pfam 
 ### Search Pfam DUF in InterPro entries and count swissprot matches
 Usage: `python pfam_duf/deduf_main.py config_pfam.ini [-o OPTION]: 1)search swissprot names for unintegrated pfam DUF 2)search for DUF in literature 3)search GO term/keywords in Swissprot matches 4)search predicted structures`
 
+## Identifying Pfam to add to clans
+See README file in the **pfam_add_clan_search** subdirectory for instructions.
+
 ## Identify InterPro entries that don't have Pfam coverage
 See README file in the **interpro_no_pfam** subdirectory for instructions.
 
