@@ -1,5 +1,4 @@
 *.csv
 *.tsv
-*.txt
 config_local.ini
 *.log
