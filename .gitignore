@@ -2,3 +2,5 @@
 *.tsv
 config_local.ini
 *.log
+*.cif
+results/*

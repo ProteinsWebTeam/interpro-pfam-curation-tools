@@ -11,7 +11,7 @@ Connect to the InterPro Oracle database and run the `entry_protein_no_pfam.sql` 
 ## Step 2: Gathering the number of proteins for an InterPro entries and the overlap count to Pfam signatures
 
 ```bash
-python3 identify_no_pfam.py config.ini
+python3 search_entry_no_pfam.py config.ini
 ```
 
 This script will create a file called `entry_no_pfam_counts.csv` in the `output` directory.

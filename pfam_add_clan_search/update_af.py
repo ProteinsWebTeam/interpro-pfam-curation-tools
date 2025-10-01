@@ -30,8 +30,8 @@ def update_af_boundaries(pfam_acc, protein_info, dbinfo):
             af_to_update.append(row)
             file_name = os.path.join(input_dir, f"{pfam_acc}_{pfam_seq_acc}_{protein_info['seq_version']}_res{protein_info['seq_start']}-{protein_info['seq_end']}.cif")
             print(f"deleting {file_name}")
-            # os.remove(file_name)
-            # out_file = split_alphafold(protein_info['pfamseq_acc'], protein_info['seq_version'], pfam_acc, chopped_struct_dir, int(protein_info['seq_start']), int(protein_info['seq_end']), output_format)
+            os.remove(file_name)
+            out_file = split_alphafold(protein_info['pfamseq_acc'], protein_info['seq_version'], pfam_acc, chopped_struct_dir, int(protein_info['seq_start']), int(protein_info['seq_end']), output_format)
 
     cursor.close()
     conn.close()

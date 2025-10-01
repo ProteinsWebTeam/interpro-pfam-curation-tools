@@ -223,11 +223,11 @@ if __name__ == "__main__":
     results = {"count60+":0, "count50-59":0, "count40-49":0, "count30-39":0, "count20-29":0, "count10-19":0, "count1-9":0, "count0":0}
 
     accessions0dir = config["files"]["output_uniprot_0overlap"]
-    accessions10dir = config["files"]["output_uniprot_10overlap"]
+    # accessions10dir = config["files"]["output_uniprot_10overlap"]
     output_allfile = config["files"]["outputfile"]
 
     os.makedirs(accessions0dir, exist_ok=True)
-    os.makedirs(accessions10dir, exist_ok=True)
+    # os.makedirs(accessions10dir, exist_ok=True)
 
     # get_interpro_data("IPR005746", cursor, accessions0dir)
 
@@ -244,7 +244,7 @@ if __name__ == "__main__":
                 get_interpro_data(entry, cursor, accessions0dir)
             elif percentage < 10:
                 results['count1-9'] += 1
-                get_uniprot_ids(entry, cursor, accessions10dir)
+                # get_uniprot_ids(entry, cursor, accessions10dir)
             elif percentage < 20:
                 results['count10-19'] += 1
             elif percentage < 30:
