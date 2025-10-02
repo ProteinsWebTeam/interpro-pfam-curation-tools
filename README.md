@@ -24,3 +24,6 @@ See README file in the **interpro_no_pfam** subdirectory for instructions.
 ## COGs analysis
 The scripts are available under the **cogs_analysis** subdirectory. 
 More details are provided in the corresponding README file.
+
+## Create folders to build potential new Pfam families from smORF encoded proteins
+See README file in the **smORF_new_Pfam_families** subdirectory for instructions.
