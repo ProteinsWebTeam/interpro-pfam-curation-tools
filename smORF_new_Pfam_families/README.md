@@ -1,7 +1,7 @@
 Create folders to build potential new Pfam families from smORF encoded proteins mentioned in scientific literature
 =========================================================
 
-Beatriz Lazaro Pinto (2024)
+Beatriz Lazaro Pinto (2023)
 
 ### Main pipeline 
 ``` bash
@@ -19,6 +19,6 @@ This script performs the following steps:
         - get taxonomy distribution
         - amends the DESC file
             - adds author, PMID and common text in CC lines
-            - add ID, DE lines and text in the CC lines if possible with information obtained from Uniprot
+            - add, if possible, ID, DE lines and text in the CC lines  with information obtained from Uniprot
         - check overlaps:
             - if the percentage of overlaps is > 90%, renames the folder to OVERLAPS_x
