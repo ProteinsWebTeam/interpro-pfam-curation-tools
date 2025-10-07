@@ -30,3 +30,9 @@ See README file in the **smORF_new_Pfam_families** subdirectory for instructions
 
 ## List of recently renamed InterPro former DUFs
 This script gets a table of old InterPro DUFs that have been renamed from the last InterPro release with the PMIDs and the Swissprot proteins currently linked to the entry in a table and returns a csv file. 
+
+## deDUF consistency
+This script produces two tables>
+- InterPro DUFs that are not DUFs in Pfam
+- Pfam DUFs that are not DUFs in InterPro
+with all the information that can help quickly see if further curation is worth it
