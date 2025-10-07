@@ -153,4 +153,4 @@ if __name__ == "__main__":
 
     else:
         output_file_foldseek = run_foldseek_all(output_file_foldseek, log_file, output_dir, afdb_dir, tmp_dir)
-        process_foldseek_results(output_file_foldseek, output_map_file, dbinfo)
+        process_foldseek_results_pfam(output_file_foldseek, output_map_file, dbinfo)

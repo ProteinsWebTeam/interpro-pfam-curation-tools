@@ -39,7 +39,7 @@ def update_af_boundaries(pfam_acc, protein_info, dbinfo):
     return None
 
 
-def update_af_with_pfam_changed_boundaries(dbinfo, input_dir, file):
+def update_af_with_pfam_changed_boundaries(dbinfo, input_dir):
     results, outfile = extract_pfam_representatives_from_file(input_dir_chopped_af)
 
     for pfam_acc, protein_info in results.items():
@@ -70,6 +70,5 @@ if __name__ == "__main__":
 
     input_dir = config["files"]["file_dir"]
     input_dir_chopped_af = os.path.join(input_dir, "chopped_cif")
-    afdb_dir = config["files"]["afdbpfam_dir"]
 
     update_af_with_pfam_changed_boundaries(dbinfo, input_dir_chopped_af)

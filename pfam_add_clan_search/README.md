@@ -13,6 +13,8 @@ Developed by Typhaine Paysan-Lafosse (September 2025)
 - NetworkX
 - mysql.connector
 
+Foldseek should be installed, it can be downloaded from https://github.com/steineggerlab/foldseek.
+
 Use a screen session and virtual environment to run the scripts in HPC cluster.
 
 ## Usage
@@ -47,7 +49,7 @@ This script performs the following steps:
 3.  Discover *de novo* groups among Pfams with no clan (potential new clans): *proposed_groups_all.csv*
 4.  Write the results to a csv file.
 
-> Note: the *pfam_edges_all.csv* can be imported into https://cosmograph.app/ for visualization.
+> Note: the *pfam_edges_all.csv* can be imported into https://cosmograph.app/ for visualisation.
 
 ### Identifying Pfam without a chopped AlphaFold structure
 

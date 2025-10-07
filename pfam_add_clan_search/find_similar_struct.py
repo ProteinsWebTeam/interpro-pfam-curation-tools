@@ -18,8 +18,9 @@ import argparse
 import shutil
 from configparser import ConfigParser
 from split_af import split_alphafold
-from foldseek import process_foldseek_results, run_foldseek_all, create_foldseek_pfamdb, process_foldseek_results_pfam
+from foldseek import run_foldseek_all, create_foldseek_pfamdb, process_foldseek_results_pfam
 from utils import sql_connection, write_results_to_tsv, extract_pfam_representatives_from_file
+from similarity_graph import analyse_foldseek_results
 
 def extract_pfams(dbinfo):
     """Extract Pfam entries of type 'domain' or 'family' from the database."""
@@ -136,21 +137,24 @@ def main():
     create_foldseek_pfamdb(chopped_struct_dir, afdb_dir, os.path.join(output_dir, "create_foldseek_db.log"))
 
     if args.pfam:
-        output_file_foldseek = os.path.join(output_dir, f"{args.option}_{args.pfam}.out")
-        log_file = os.path.join(output_dir, f"{args.option}_{args.pfam}.log")
-        output_map_file = os.path.join(output_dir, f"{args.option}_{args.pfam}_map.tsv")
-        foldseek_result_file = run_foldseek_all(output_file_foldseek, log_file, out_file, afdb_dir, tmp_dir)
+        output_file_foldseek = os.path.join(output_dir, f"foldseek_{args.pfam}.out")
+        log_file = os.path.join(output_dir, f"foldseek_{args.pfam}.log")
+        output_map_file = os.path.join(output_dir, f"foldseek_{args.pfam}_map.tsv")
+        if not os.path.isfile(output_file_foldseek) or os.path.getsize(output_file_foldseek) == 0:
+            foldseek_result_file = run_foldseek_all(output_file_foldseek, log_file, out_file, afdb_dir, tmp_dir)
+            process_foldseek_results_pfam(output_file_foldseek, output_map_file, dbinfo)
+            analyse_foldseek_results(output_map_file)
 
     else:
-        output_file_foldseek = os.path.join(output_dir, f"{args.option}_all.out")
-        log_file = os.path.join(output_dir, f"{args.option}_all.log")
-        output_map_file = os.path.join(output_dir, f"{args.option}_all_map.tsv")
+        output_file_foldseek = os.path.join(output_dir, f"foldseek_all.out")
+        log_file = os.path.join(output_dir, f"foldseek_all.log")
+        output_map_file = os.path.join(output_dir, f"foldseek_all_map.tsv")
 
         if not os.path.isfile(output_file_foldseek) or os.path.getsize(output_file_foldseek) == 0:
             foldseek_result_file = run_foldseek_all(output_file_foldseek, log_file, chopped_struct_dir, afdb_dir, tmp_dir)
 
             process_foldseek_results_pfam(output_file_foldseek, output_map_file, dbinfo)
-            analyse_foldseek_results(output_file_foldseek)
+            analyse_foldseek_results(output_map_file)
 
 if __name__ == "__main__":
     main()
